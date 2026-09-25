@@ -55,6 +55,24 @@ wiring) before the next phase began.
   genuinely user-generated data rather than SWAPI catalog data (see
   `design.md`, decision 5).
 
+- [x] **Fase 9 — SWAPI hardening (post-documentation)**
+  Migrated `SwapiService` from `swapi.dev` to `swapi.tech` (different
+  response envelope: `{ uid, properties }` list items, `total_records`/
+  `next`-driven pagination via `?expanded=true`, and an unpaginated
+  singular `result` array for `films`). Extracted the six raw-to-DTO
+  mappings that used to live inline in `SwapiService` into one Adapter
+  class per resource under `src/swapi/adapters/` (`PlanetAdapter`,
+  `CharacterAdapter`, `SpeciesAdapter`, `StarshipAdapter`,
+  `VehicleAdapter`, `FilmAdapter`, all implementing `SwapiAdapter<TRaw,
+  TDto>`), each with its own unit tests, leaving `SwapiService` scoped to
+  HTTP/pagination only. Collapsed the redundant outer `try/catch` in
+  `SwapiService#get` now that the RxJS `catchError` in the `HttpService`
+  pipe already converts every failure to `ServiceUnavailableException`.
+  Confirmed via `@nestjs/axios`'s own README that returning RxJS
+  Observables from `HttpService` is the package's documented, intended
+  design — kept `firstValueFrom` + `HttpService` rather than swapping to a
+  plain promise-based HTTP client. See `ARCHITECTURE.md`, decision 9.
+
 - [ ] **Remaining / explicitly out of scope for now**
   - Real deployment (only local Docker Compose for Postgres exists today).
   - Caching of SWAPI responses.

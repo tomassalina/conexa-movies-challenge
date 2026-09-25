@@ -255,7 +255,7 @@ src/
 ├── users/                # User entity, role management (PATCH /users/:id/role)
 ├── movies/               # Movie entity + CRUD, pagination/sorting, nested relation routes, movie_* junction entities
 ├── favorites/            # Per-user favorites (entity + CRUD, scoped to the caller)
-├── swapi/                # SWAPI HTTP client, sync service/controller/cron, response DTOs and parsers
+├── swapi/                # SWAPI HTTP client (HTTP/pagination only), sync service/controller/cron, per-resource Adapter classes (raw-to-DTO mapping), response DTOs and parsers
 ├── characters/           # Sync-only module: entity + service, no controller (see decision #4)
 ├── planets/              # Sync-only module: entity + service, no controller
 ├── species/              # Sync-only module: entity + service, no controller
@@ -294,5 +294,6 @@ service + managed Postgres). Until then, run the app locally following
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the reasoning behind the
 non-obvious design decisions in this codebase (permission model, migrations
 over `synchronize`, Zod-driven validation and docs, the `swapiId`
-nullability split, favorites, admin bootstrap, the additive SWAPI sync, and
-the sort-field whitelist).
+nullability split, favorites, admin bootstrap, the additive SWAPI sync, the
+sort-field whitelist, and the SWAPI Adapter classes / HTTP-only
+`SwapiService` split).

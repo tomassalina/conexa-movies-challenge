@@ -144,3 +144,20 @@ either an authenticated admin or the seeded admin (for sync writes).
 Junction/link tables (`movie_*` and `favorites`) use the lighter
 `CreatedAuditEntity` instead, since those rows are either replaced
 wholesale by a re-sync or hard-deleted (unfavorite), never edited in place.
+
+## 10. SWAPI Adapter classes; `SwapiService` scoped to HTTP/pagination only
+
+`SwapiService` (`src/swapi/swapi.service.ts`) migrated from `swapi.dev` to
+`swapi.tech` and now only fetches and paginates; the six raw-to-DTO
+mappings it used to do inline were extracted into one Adapter class per
+resource under `src/swapi/adapters/` (`PlanetAdapter`, `CharacterAdapter`,
+`SpeciesAdapter`, `StarshipAdapter`, `VehicleAdapter`, `FilmAdapter`), all
+implementing `SwapiAdapter<TRaw, TDto>` and independently unit tested. The
+redundant outer `try/catch` in `SwapiService#get` was also dropped — the
+RxJS `catchError` inside the `HttpService` pipe already converts every
+failure to `ServiceUnavailableException`. `@nestjs/axios`'s `HttpService`
+(and the RxJS `Observable`/`firstValueFrom` pattern that comes with it)
+was kept rather than replaced with a plain promise-based client, since the
+package's own README documents returning Observables as its intended
+design, not a legacy artifact. See `ARCHITECTURE.md`, decision 9, for the
+full reasoning and alternatives considered.

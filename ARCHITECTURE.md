@@ -227,3 +227,45 @@ explicit that the service should stay safe even if it's ever called from
 somewhere other than the HTTP layer (a future internal caller, a test, a
 GraphQL resolver later), rather than trusting that every future call site
 remembers to validate first.
+
+## 9. SWAPI raw-to-DTO mapping extracted into per-resource Adapter classes; `SwapiService` kept HTTP-only
+
+**Chosen:** `SwapiService` (`src/swapi/swapi.service.ts`) talks to
+`https://www.swapi.tech/api` (migrated from the earlier `swapi.dev`
+integration — a different response envelope: list items arrive wrapped as
+`{ uid, properties }`, pagination is driven by `total_records`/`next` via
+`?expanded=true`, and `films` is the one resource returned unpaginated
+under a singular `result` array). `SwapiService` itself now owns *only*
+HTTP fetching and pagination. Translating each resource's raw swapi.tech
+shape into its internal DTO was pulled out into one **Adapter** class per
+resource under `src/swapi/adapters/`
+(`PlanetAdapter`, `CharacterAdapter`, `SpeciesAdapter`, `StarshipAdapter`,
+`VehicleAdapter`, `FilmAdapter`), all implementing the same
+`SwapiAdapter<TRaw, TDto>` interface (`adapt(raw: TRaw): TDto`) and each
+with its own unit tests that need no HTTP mocking at all.
+
+Within `SwapiService#get`, the single point where an HTTP call actually
+happens, error handling was also collapsed to one layer: the RxJS
+`catchError` inside the `HttpService` pipe converts every failure into a
+`ServiceUnavailableException`, and that's the only error handling —
+there is no redundant outer `try/catch` re-checking the same condition.
+
+**Alternative considered:** leaving each `fetchX` method to inline its own
+raw-to-DTO mapping (the original shape of this service), or dropping
+`@nestjs/axios`'s `HttpService` in favor of a plain `fetch`/promise-based
+HTTP client to avoid RxJS entirely.
+
+**Why not:** inline mapping meant six near-identical translation blocks
+living inside the same class as the HTTP/pagination logic, untestable
+without mocking `HttpService`, and any single-resource mapping bug review
+required reading the whole service. One `Adapter` class per resource
+(Adapter Pattern: each class's only job is translating one external shape
+into one internal shape) makes each mapping independently unit-testable
+and keeps `SwapiService` scoped to a single responsibility — HTTP/pagination.
+Dropping `HttpService` for a plain promise-based client was rejected
+because `@nestjs/axios`'s own documentation states it "transforms the
+resulting HTTP responses into Observables (from RxJS)" by design — that's
+the package's intended, documented usage, not an artifact of an older
+NestJS convention — so converting the single response with
+`firstValueFrom` and composing `timeout`/`catchError` on the pipe is the
+idiomatic way to consume it, not a legacy pattern to migrate away from.
