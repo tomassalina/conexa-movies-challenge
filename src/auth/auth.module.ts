@@ -6,6 +6,7 @@ import { UsersModule } from '../users/users.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { AuthGuard } from './guards/jwt-auth.guard.js';
+import { PermissionsGuard } from './guards/permissions.guard.js';
 
 @Module({
   imports: [
@@ -23,6 +24,12 @@ import { AuthGuard } from './guards/jwt-auth.guard.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, { provide: APP_GUARD, useClass: AuthGuard }],
+  providers: [
+    AuthService,
+    // Order matters: AuthGuard must run first to populate request.user
+    // before PermissionsGuard reads request.user.role.
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
+  ],
 })
 export class AuthModule {}
