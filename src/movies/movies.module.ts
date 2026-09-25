@@ -6,6 +6,7 @@ import { MoviePlanet } from './entities/movie-planet.entity.js';
 import { MovieSpecies } from './entities/movie-species.entity.js';
 import { MovieStarship } from './entities/movie-starship.entity.js';
 import { MovieVehicle } from './entities/movie-vehicle.entity.js';
+import { MoviesController } from './movies.controller.js';
 import { MoviesService } from './movies.service.js';
 
 @Module({
@@ -19,6 +20,7 @@ import { MoviesService } from './movies.service.js';
       MovieVehicle,
     ]),
   ],
+  controllers: [MoviesController],
   providers: [MoviesService],
   exports: [MoviesService],
 })
