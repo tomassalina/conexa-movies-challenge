@@ -297,15 +297,20 @@ dual origin (SWAPI sync *or* manual admin authorship) — see decision #4 in
 **Live:** http://app-connect-digital-matrix-5w22bj-14bce3-89-116-170-218.sslip.io/
 — Swagger at [`/api/docs`](http://app-connect-digital-matrix-5w22bj-14bce3-89-116-170-218.sslip.io/api/docs).
 
-Deployed via [Dokploy](https://dokploy.com/) on a self-hosted VPS
-(Hostinger): the app builds and deploys automatically on every push to
-`main` (Nixpacks, no Dockerfile needed), backed by a separate
-Dokploy-managed Postgres instance. Connecting a repo to Dokploy for the
-first time requires one manual, one-time step in its dashboard (Git →
-Create GitHub App → authorize via OAuth and select the repo) — that
-authorization can't be done through the API alone, only the
-project/application creation, env var configuration, and deploy triggers
-can.
+Hosted on a self-managed [Hostinger](https://www.hostinger.com/) VPS,
+running [Dokploy](https://dokploy.com/) as the deployment platform. The
+project has two independently managed services — the API and its
+Postgres database — each with its own health status and deploy history:
+
+![Dokploy dashboard for this project, showing the conexa-movies-api and movies-db services, both running](docs/dokploy-dashboard.png)
+
+The app builds and deploys automatically on every push to `main`
+(Nixpacks, no Dockerfile needed), backed by a separate Dokploy-managed
+Postgres instance. Connecting a repo to Dokploy for the first time
+requires one manual, one-time step in its dashboard (Git → Create GitHub
+App → authorize via OAuth and select the repo) — that authorization can't
+be done through the API alone, only the project/application creation, env
+var configuration, and deploy triggers can.
 
 ## Architecture Decisions
 
