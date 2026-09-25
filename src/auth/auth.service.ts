@@ -6,7 +6,9 @@ import { UsersService } from '../users/users.service.js';
 import type { LoginDto } from './dto/login.dto.js';
 import type { SignupDto } from './dto/signup.dto.js';
 
-const BCRYPT_COST = 10;
+// Exported so other bcrypt callers (e.g. the admin seed script) hash with
+// the exact same cost factor instead of duplicating/drifting from this value.
+export const BCRYPT_COST = 10;
 
 @Injectable()
 export class AuthService {
