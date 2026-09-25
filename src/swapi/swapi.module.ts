@@ -6,6 +6,7 @@ import { PlanetsModule } from '../planets/planets.module.js';
 import { SpeciesModule } from '../species/species.module.js';
 import { StarshipsModule } from '../starships/starships.module.js';
 import { VehiclesModule } from '../vehicles/vehicles.module.js';
+import { SwapiSyncController } from './swapi-sync.controller.js';
 import { SwapiSyncService } from './swapi-sync.service.js';
 import { SwapiService } from './swapi.service.js';
 
@@ -19,6 +20,7 @@ import { SwapiService } from './swapi.service.js';
     VehiclesModule,
     MoviesModule,
   ],
+  controllers: [SwapiSyncController],
   providers: [SwapiService, SwapiSyncService],
   exports: [SwapiService, SwapiSyncService],
 })
