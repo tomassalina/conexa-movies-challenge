@@ -27,37 +27,16 @@ the non-obvious design decisions.
 
 ## Table of Contents
 
-- [Tech Stack](#tech-stack)
 - [Features](#features)
 - [Extra Features](#extra-features)
-- [Folder Structure](#folder-structure)
-- [Database Model](#database-model)
+- [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
 - [API Documentation](#api-documentation)
 - [Testing](#testing)
+- [Folder Structure](#folder-structure)
+- [Database Model](#database-model)
 - [Deployment](#deployment)
 - [Architecture Decisions](#architecture-decisions)
-
-## Tech Stack
-
-- **[NestJS](https://nestjs.com/) 12** (`@nestjs/common`, `core`,
-  `platform-express`) — application framework
-- **TypeScript 6**, ESM (`"type": "module"`)
-- **PostgreSQL** + **TypeORM 1.1** (`@nestjs/typeorm`, `pg`) — persistence,
-  with hand-written migrations (no `synchronize`)
-- **[Zod 4](https://zod.dev/)** — request validation via NestJS's native
-  Standard Schema pipe (`StandardSchemaValidationPipe`), no separate
-  `class-validator` layer
-- **JWT auth** — `@nestjs/jwt` + `bcrypt` for password hashing
-- **`@nestjs/swagger`** — OpenAPI docs, generated directly from the same Zod
-  schemas used for validation (see `src/common/openapi/zod-schema.util.ts`)
-- **`@nestjs/schedule`** — daily cron job for the SWAPI sync
-- **`@nestjs/axios`** — HTTP client used to call SWAPI
-- **`helmet`** — baseline HTTP security headers
-- **[Vitest 4](https://vitest.dev/)** (`@vitest/coverage-v8`) — unit and e2e
-  tests
-- **[oxlint](https://oxc.rs/docs/guide/usage/linter.html)** — linting
-- **pnpm** — package manager
 
 ## Features
 
@@ -108,42 +87,26 @@ Beyond what the brief asked for:
   endpoint *or* a cron; this ships both (`POST /movies/sync` plus a daily
   `@nestjs/schedule` job).
 
-## Folder Structure
+## Tech Stack
 
-```
-src/
-├── main.ts              # Bootstrap: helmet, CORS, global Zod validation pipe, Swagger setup
-├── app.module.ts         # Root module; registers the global JWT + permissions guards
-├── auth/                 # Signup/login, JWT strategy, @Public/@Permissions/@AnyAuthenticatedUser decorators, role→permission mapping
-├── users/                # User entity, role management (PATCH /users/:id/role)
-├── movies/               # Movie entity + CRUD, pagination/sorting, nested relation routes, movie_* junction entities
-├── favorites/            # Per-user favorites (entity + CRUD, scoped to the caller)
-├── swapi/                # SWAPI HTTP client, sync service/controller/cron, response DTOs and parsers
-├── characters/           # Sync-only module: entity + service, no controller (see decision #4)
-├── planets/              # Sync-only module: entity + service, no controller
-├── species/              # Sync-only module: entity + service, no controller
-├── starships/            # Sync-only module: entity + service, no controller
-├── vehicles/             # Sync-only module: entity + service, no controller
-├── common/               # Cross-cutting: Zod→OpenAPI bridge, response interceptors
-├── config/               # Environment variable validation (env.validation.ts)
-└── database/             # TypeORM data source, migrations, naming strategy, audit base entities, admin seed script
-```
-
-## Database Model
-
-![Database schema](docs/db-schema.png)
-
-Source diagram: [`docs/db-schema.drawio`](docs/db-schema.drawio) — open it directly on
-[app.diagrams.net](https://app.diagrams.net/) (File → Open From → Device) or view/edit
-it inline via GitHub's built-in `.drawio` viewer.
-
-`Movie`, `Character`, `Planet`, `Species`, `Starship` and `Vehicle` all also
-carry a full audit trail (`createdBy` / `updatedBy` / `deletedBy` → `User`,
-plus timestamps) and the five junction tables carry `createdBy`; these are
-omitted above for readability — see `src/database/auditable.entity.ts`.
-`swapiId` is nullable only on `Movie`, since it's the only entity with a
-dual origin (SWAPI sync *or* manual admin authorship) — see decision #4 in
-[`ARCHITECTURE.md`](./ARCHITECTURE.md).
+- **[NestJS](https://nestjs.com/) 12** (`@nestjs/common`, `core`,
+  `platform-express`) — application framework
+- **TypeScript 6**, ESM (`"type": "module"`)
+- **PostgreSQL** + **TypeORM 1.1** (`@nestjs/typeorm`, `pg`) — persistence,
+  with hand-written migrations (no `synchronize`)
+- **[Zod 4](https://zod.dev/)** — request validation via NestJS's native
+  Standard Schema pipe (`StandardSchemaValidationPipe`), no separate
+  `class-validator` layer
+- **JWT auth** — `@nestjs/jwt` + `bcrypt` for password hashing
+- **`@nestjs/swagger`** — OpenAPI docs, generated directly from the same Zod
+  schemas used for validation (see `src/common/openapi/zod-schema.util.ts`)
+- **`@nestjs/schedule`** — daily cron job for the SWAPI sync
+- **`@nestjs/axios`** — HTTP client used to call SWAPI
+- **`helmet`** — baseline HTTP security headers
+- **[Vitest 4](https://vitest.dev/)** (`@vitest/coverage-v8`) — unit and e2e
+  tests
+- **[oxlint](https://oxc.rs/docs/guide/usage/linter.html)** — linting
+- **pnpm** — package manager
 
 ## Getting Started
 
@@ -281,6 +244,43 @@ the `auth`, `movies`, `favorites` and `swapi` modules, plus the SWAPI
 response parsers. Both vitest configs (`vitest.config.ts` and
 `vitest.config.e2e.ts`) exclude `**/.claude/**` from file discovery, so
 agent worktrees created under `.claude/` don't get picked up as test files.
+
+## Folder Structure
+
+```
+src/
+├── main.ts              # Bootstrap: helmet, CORS, global Zod validation pipe, Swagger setup
+├── app.module.ts         # Root module; registers the global JWT + permissions guards
+├── auth/                 # Signup/login, JWT strategy, @Public/@Permissions/@AnyAuthenticatedUser decorators, role→permission mapping
+├── users/                # User entity, role management (PATCH /users/:id/role)
+├── movies/               # Movie entity + CRUD, pagination/sorting, nested relation routes, movie_* junction entities
+├── favorites/            # Per-user favorites (entity + CRUD, scoped to the caller)
+├── swapi/                # SWAPI HTTP client, sync service/controller/cron, response DTOs and parsers
+├── characters/           # Sync-only module: entity + service, no controller (see decision #4)
+├── planets/              # Sync-only module: entity + service, no controller
+├── species/              # Sync-only module: entity + service, no controller
+├── starships/            # Sync-only module: entity + service, no controller
+├── vehicles/             # Sync-only module: entity + service, no controller
+├── common/               # Cross-cutting: Zod→OpenAPI bridge, response interceptors
+├── config/               # Environment variable validation (env.validation.ts)
+└── database/             # TypeORM data source, migrations, naming strategy, audit base entities, admin seed script
+```
+
+## Database Model
+
+![Database schema](docs/db-schema.png)
+
+Source diagram: [`docs/db-schema.drawio`](docs/db-schema.drawio) — open it directly on
+[app.diagrams.net](https://app.diagrams.net/) (File → Open From → Device) or view/edit
+it inline via GitHub's built-in `.drawio` viewer.
+
+`Movie`, `Character`, `Planet`, `Species`, `Starship` and `Vehicle` all also
+carry a full audit trail (`createdBy` / `updatedBy` / `deletedBy` → `User`,
+plus timestamps) and the five junction tables carry `createdBy`; these are
+omitted above for readability — see `src/database/auditable.entity.ts`.
+`swapiId` is nullable only on `Movie`, since it's the only entity with a
+dual origin (SWAPI sync *or* manual admin authorship) — see decision #4 in
+[`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Deployment
 
