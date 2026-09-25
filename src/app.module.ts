@@ -12,6 +12,10 @@ import { PermissionsGuard } from './auth/guards/permissions.guard.js';
 import { UsersModule } from './users/users.module.js';
 import { SwapiModule } from './swapi/swapi.module.js';
 import { PlanetsModule } from './planets/planets.module.js';
+import { CharactersModule } from './characters/characters.module.js';
+import { SpeciesModule } from './species/species.module.js';
+import { StarshipsModule } from './starships/starships.module.js';
+import { VehiclesModule } from './vehicles/vehicles.module.js';
 
 @Module({
   imports: [
@@ -37,6 +41,10 @@ import { PlanetsModule } from './planets/planets.module.js';
     AuthModule,
     SwapiModule,
     PlanetsModule,
+    CharactersModule,
+    SpeciesModule,
+    StarshipsModule,
+    VehiclesModule,
   ],
   controllers: [AppController],
   providers: [
