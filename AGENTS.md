@@ -125,7 +125,14 @@ the source of truth for both runtime validation and API docs.
    processes** exhaust the whole machine's file descriptor table. If you
    background a dev server or watch process, kill it when you're done and
    confirm with `pgrep -fl nest` (or similar) that nothing is left over —
-   don't just assume the shell cleaned it up.
+   don't just assume the shell cleaned it up. **A `pgrep -f` pattern that
+   includes the absolute repo path (e.g. `conexa-movies-challenge/dist/main`)
+   will silently miss a process launched with a relative path (`node
+   dist/main.js`)** — this happened twice this session, leaving a real
+   leaked process behind a "cerrado ok" false confirmation. Prefer
+   capturing the exact PID at launch time (`command & PID=$!`) over
+   pattern-matching after the fact, or use a narrower, path-independent
+   pattern like `pgrep -f "dist/main.js"`.
 
 2. **Don't touch the `.claude/**` exclusion in `vitest.config.ts` /
    `vitest.config.e2e.ts`.** It's there so that running tests while an
@@ -158,6 +165,20 @@ the source of truth for both runtime validation and API docs.
    confirm `.env` is set up rather than touching it yourself. A stray
    `.env` left behind is harmless (it's gitignored); overwriting or
    deleting the real one is not.
+
+5. **Never configure a compound shell command (`sh -c "a && b"`) as a raw
+   string through a deploy platform's API/UI field.** This project's
+   production entrypoint needs to run migrations before starting the
+   server, and the first attempt at this — passing
+   `sh -c "migration-command && node dist/main.js"` as a JSON string field
+   on the Dokploy application config — broke in production with
+   `Syntax error: Unterminated quoted string`, because the nested quoting
+   didn't survive JSON encoding → API → the platform's own command
+   parsing intact. Fixed by moving the whole sequence into a committed,
+   executable script (`scripts/start-prod.sh`) and pointing the platform's
+   startup command at that script instead (`sh scripts/start-prod.sh`) —
+   zero nested quoting, and the actual startup logic is versioned in the
+   repo instead of hidden in a platform's dashboard/API config.
 
 ## Where to find deeper context
 
