@@ -6,10 +6,9 @@ import { SwapiSyncService } from './swapi-sync.service.js';
 
 /**
  * Runs syncAll() attributed to the admin identified by ADMIN_EMAIL — the same
- * env var the (not yet built, Fase 5) seed script will use to create the
- * first admin. Once that seed exists, this resolves automatically with no
- * changes here. Until then, it no-ops with a warning if that admin doesn't
- * exist yet, instead of crashing the scheduler.
+ * account the seed script (src/database/seeds/create-admin.seed.ts) creates.
+ * No-ops with a warning instead of crashing the scheduler if that admin
+ * doesn't exist yet (e.g. the seed hasn't been run in this environment).
  */
 @Injectable()
 export class SwapiSyncCron {
