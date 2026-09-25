@@ -309,8 +309,8 @@ dual origin (SWAPI sync *or* manual admin authorship) — see decision #4 in
 
 ## Deployment
 
-**Live:** http://app-connect-digital-matrix-5w22bj-14bce3-89-116-170-218.sslip.io/
-— Swagger at [`/api/docs`](http://app-connect-digital-matrix-5w22bj-14bce3-89-116-170-218.sslip.io/api/docs).
+**Live:** https://app-connect-digital-matrix-5w22bj-14bce3-89-116-170-218.sslip.io/
+— Swagger at [`/api/docs`](https://app-connect-digital-matrix-5w22bj-14bce3-89-116-170-218.sslip.io/api/docs).
 
 Hosted on a self-managed [Hostinger](https://www.hostinger.com/) VPS,
 running [Dokploy](https://dokploy.com/) as the deployment platform. The
