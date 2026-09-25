@@ -11,6 +11,7 @@ import { AuthGuard } from './auth/guards/jwt-auth.guard.js';
 import { PermissionsGuard } from './auth/guards/permissions.guard.js';
 import { UsersModule } from './users/users.module.js';
 import { SwapiModule } from './swapi/swapi.module.js';
+import { PlanetsModule } from './planets/planets.module.js';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SwapiModule } from './swapi/swapi.module.js';
     UsersModule,
     AuthModule,
     SwapiModule,
+    PlanetsModule,
   ],
   controllers: [AppController],
   providers: [
