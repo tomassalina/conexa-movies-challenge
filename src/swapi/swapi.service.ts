@@ -274,25 +274,15 @@ export class SwapiService {
   }
 
   private async get<T>(url: string): Promise<T> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get<T>(url).pipe(
-          timeout(REQUEST_TIMEOUT_MS),
-          catchError((error: unknown) => {
-            this.logger.error(`SWAPI request failed for ${url}`, error as Error);
-            throw new ServiceUnavailableException(
-              'Star Wars API is currently unavailable',
-            );
-          }),
-        ),
-      );
-      return response.data;
-    } catch (error) {
-      if (error instanceof ServiceUnavailableException) {
-        throw error;
-      }
-      this.logger.error(`Unexpected SWAPI error for ${url}`, error as Error);
-      throw new ServiceUnavailableException('Star Wars API is currently unavailable');
-    }
+    const response = await firstValueFrom(
+      this.httpService.get<T>(url).pipe(
+        timeout(REQUEST_TIMEOUT_MS),
+        catchError((error: unknown) => {
+          this.logger.error(`SWAPI request failed for ${url}`, error as Error);
+          throw new ServiceUnavailableException('Star Wars API is currently unavailable');
+        }),
+      ),
+    );
+    return response.data;
   }
 }
