@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://tomassalina.com">
+  <a href="https://tomassalina.com" target="_blank" rel="noopener noreferrer">
     <img src="https://www.tomassalina.com/og-image.png" alt="Tomas Salina Portfolio" width="600" />
   </a>
 </p>
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  Developed by <a href="https://tomassalina.com">Tomás Salina</a>
+  Developed by <a href="https://tomassalina.com" target="_blank" rel="noopener noreferrer">Tomás Salina</a>
 </p>
 
 ---
