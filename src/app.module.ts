@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { AuthGuard } from './auth/guards/jwt-auth.guard.js';
 import { PermissionsGuard } from './auth/guards/permissions.guard.js';
 import { UsersModule } from './users/users.module.js';
+import { SwapiModule } from './swapi/swapi.module.js';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module.js';
     }),
     UsersModule,
     AuthModule,
+    SwapiModule,
   ],
   controllers: [AppController],
   providers: [
