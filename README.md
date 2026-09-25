@@ -190,6 +190,16 @@ environment and creates that one admin account directly, bypassing the
 normal signup flow. Run it once after migrations; every admin after that is
 created by an existing admin via `PATCH /users/:id/role`.
 
+**Default seeded admin** (from `.env.example`'s values — this is a technical
+challenge submission, not a production credential, so it's shared openly
+here for anyone reviewing this repo to log in and try the admin-only
+endpoints without running the seed script themselves):
+
+```
+email:    admin@conexa.ai
+password: ChangeMe123!
+```
+
 ## API Documentation
 
 Once the app is running, Swagger UI is available at:
@@ -206,7 +216,7 @@ bearer token. Obtain one by logging in:
 ```bash
 curl -X POST http://localhost:3000/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"admin@conexa.ai","password":"<your-password>"}'
+  -d '{"email":"admin@conexa.ai","password":"ChangeMe123!"}'
 ```
 
 Then pass the returned `accessToken` as `Authorization: Bearer <token>` on
@@ -284,9 +294,16 @@ dual origin (SWAPI sync *or* manual admin authorship) — see decision #4 in
 
 ## Deployment
 
-**Not yet deployed.** Planned target: a free tier on
-[Railway](https://railway.app/) or [Render](https://render.com/) (Node
-service + managed Postgres). Until then, run the app locally following
+**Live URL:** _TODO — fill in once the Dokploy deploy is live
+(`http://89.116.170.218:3000/` is the Dokploy panel itself, not the app)._
+
+Deploying via [Dokploy](https://dokploy.com/) on a self-hosted VPS
+(Hostinger), connected to this GitHub repository for auto-deploy on push to
+`main`. Connecting a repo to Dokploy requires one manual, one-time step in
+its dashboard (Git → Create GitHub App → authorize via OAuth and select this
+repo) — that authorization can't be done through the API alone, only the
+project/application creation, env var configuration, and deploy triggers
+can. Until the live URL above is filled in, run the app locally following
 [Getting Started](#getting-started) above.
 
 ## Architecture Decisions
