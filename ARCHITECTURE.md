@@ -228,6 +228,14 @@ somewhere other than the HTTP layer (a future internal caller, a test, a
 GraphQL resolver later), rather than trusting that every future call site
 remembers to validate first.
 
+The same `{ page, limit, sortBy, order } → { data, meta }` shape and
+whitelist-then-map pattern is reused for the 5 movie nested-relation routes
+(`ListRelatedQueryDto` / `RELATED_SORT_COLUMNS`, whitelisting `name` and
+`createdAt` against each related entity) and for `GET /favorites`
+(`ListFavoritesQueryDto` / `FAVORITE_SORT_COLUMNS`, whitelisting only
+`createdAt`) — they were flat, unpaginated arrays until this was extended to
+cover them too, for the same reasons this decision already gives for movies.
+
 ## 9. SWAPI raw-to-DTO mapping extracted into per-resource Adapter classes; `SwapiService` kept HTTP-only
 
 **Chosen:** `SwapiService` (`src/swapi/swapi.service.ts`) talks to

@@ -66,9 +66,11 @@ Beyond what the brief asked for:
   `src/vehicles`), not only the films the brief required.
 - **Read-only nested relation routes** — `GET /api/v1/movies/:id/characters`,
   `/planets`, `/species`, `/starships`, `/vehicles` expose that synced catalog
-  without giving it standalone CRUD (decision #4 in `ARCHITECTURE.md`).
+  without giving it standalone CRUD (decision #4 in `ARCHITECTURE.md`), paginated
+  and sortable the same way `GET /api/v1/movies` is.
 - **Favorites** — `POST/DELETE/GET /api/v1/favorites`, letting any
-  authenticated user bookmark movies. Not requested in the brief at all.
+  authenticated user bookmark movies. Not requested in the brief at all;
+  `GET /` is paginated the same way.
 - **Fail-closed permission system** — every route must explicitly declare
   `@Public()`, `@Permissions(...)`, or `@AnyAuthenticatedUser()`; a route with
   none of them throws `403` instead of silently becoming public
@@ -249,6 +251,28 @@ Characters, planets, species, starships and vehicles have no standalone
 endpoints of their own — they're populated exclusively by the SWAPI sync and
 exposed only as read-only nested routes under `/api/v1/movies/:id/...` (see
 [`ARCHITECTURE.md`](./ARCHITECTURE.md) for why).
+
+`GET /api/v1/movies`, its 5 nested relation routes, and `GET /api/v1/favorites`
+all return the same paginated shape:
+
+```json
+{
+  "data": [ ... ],
+  "meta": {
+    "total": 42,
+    "page": 1,
+    "totalPages": 5,
+    "hasNextPage": true,
+    "hasPreviousPage": false
+  }
+}
+```
+
+All of them accept `?page` (default `1`) and `?limit` (default `10`, max
+`100`), plus `?sortBy`/`?order` (`asc`/`desc`, default `desc`) validated
+against a per-resource whitelist: `title`/`releaseDate`/`episodeId`/`createdAt`
+for movies, `name`/`createdAt` for the 5 nested relations, and `createdAt`
+(when favorited) for favorites.
 
 The SWAPI sync also runs automatically once a day via a cron job
 (`@nestjs/schedule`), attributed to the admin identified by `ADMIN_EMAIL`.
