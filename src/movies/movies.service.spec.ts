@@ -7,6 +7,9 @@ import type { MovieSpecies } from './entities/movie-species.entity.js';
 import type { MovieStarship } from './entities/movie-starship.entity.js';
 import type { MovieVehicle } from './entities/movie-vehicle.entity.js';
 import type { ListMoviesQueryDto } from './dto/list-movies-query.dto.js';
+import type { ListRelatedQueryDto } from './dto/list-related-query.dto.js';
+import { createMovieSchema } from './dto/create-movie.dto.js';
+import { updateMovieSchema } from './dto/update-movie.dto.js';
 import { MoviesService } from './movies.service.js';
 
 const ACTOR_USER_ID = 'actor-user-id';
@@ -22,27 +25,27 @@ function buildService() {
   } as unknown as Repository<Movie>;
 
   const moviePlanetRepository = {
-    find: vi.fn(),
+    findAndCount: vi.fn(),
     upsert: vi.fn(),
   } as unknown as Repository<MoviePlanet>;
 
   const movieCharacterRepository = {
-    find: vi.fn(),
+    findAndCount: vi.fn(),
     upsert: vi.fn(),
   } as unknown as Repository<MovieCharacter>;
 
   const movieSpeciesRepository = {
-    find: vi.fn(),
+    findAndCount: vi.fn(),
     upsert: vi.fn(),
   } as unknown as Repository<MovieSpecies>;
 
   const movieStarshipRepository = {
-    find: vi.fn(),
+    findAndCount: vi.fn(),
     upsert: vi.fn(),
   } as unknown as Repository<MovieStarship>;
 
   const movieVehicleRepository = {
-    find: vi.fn(),
+    findAndCount: vi.fn(),
     upsert: vi.fn(),
   } as unknown as Repository<MovieVehicle>;
 
@@ -76,7 +79,56 @@ function baseQuery(overrides: Partial<ListMoviesQueryDto> = {}): ListMoviesQuery
   };
 }
 
+function baseRelatedQuery(overrides: Partial<ListRelatedQueryDto> = {}): ListRelatedQueryDto {
+  return {
+    page: 1,
+    limit: 10,
+    sortBy: 'createdAt',
+    order: 'desc',
+    ...overrides,
+  };
+}
+
 describe('MoviesService', () => {
+  describe('createMovieSchema / episodeId bounds', () => {
+    it('rejects an episodeId above the smallint column range instead of letting it reach Postgres', () => {
+      const result = createMovieSchema.safeParse({
+        title: 'The Empire Strikes Back',
+        episodeId: 9007199254740991,
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a zero or negative episodeId', () => {
+      expect(createMovieSchema.safeParse({ title: 'X', episodeId: 0 }).success).toBe(false);
+      expect(createMovieSchema.safeParse({ title: 'X', episodeId: -1 }).success).toBe(false);
+    });
+
+    it('accepts a valid episode number within the smallint range', () => {
+      const result = createMovieSchema.safeParse({
+        title: 'The Empire Strikes Back',
+        episodeId: 5,
+      });
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('updateMovieSchema / episodeId bounds', () => {
+    it('rejects an episodeId above the smallint column range', () => {
+      const result = updateMovieSchema.safeParse({ episodeId: 9007199254740991 });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts a valid episode number within the smallint range', () => {
+      const result = updateMovieSchema.safeParse({ episodeId: 5 });
+
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('create', () => {
     it('creates a movie with swapiId forced to null and stamps created/updated by the actor', async () => {
       const { service, moviesRepository } = buildService();
@@ -257,94 +309,201 @@ describe('MoviesService', () => {
   });
 
   describe('nested relations', () => {
-    it('findCharacters returns the linked characters for an existing movie', async () => {
+    it('findCharacters returns a paginated page of the linked characters', async () => {
       const { service, moviesRepository, movieCharacterRepository } = buildService();
       (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: 'movie-1',
       } as Movie);
       const character = { id: 'char-1', name: 'Luke Skywalker' };
-      (movieCharacterRepository.find as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { movieId: 'movie-1', characterId: 'char-1', character },
+      (movieCharacterRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [{ movieId: 'movie-1', characterId: 'char-1', character }],
+        1,
       ]);
 
-      const result = await service.findCharacters('movie-1');
+      const result = await service.findCharacters('movie-1', baseRelatedQuery());
 
-      expect(result).toEqual([character]);
-      expect(movieCharacterRepository.find).toHaveBeenCalledWith({
+      expect(result.data).toEqual([character]);
+      expect(result.meta).toEqual({
+        total: 1,
+        page: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      });
+      expect(movieCharacterRepository.findAndCount).toHaveBeenCalledWith({
         where: { movieId: 'movie-1' },
         relations: { character: true },
+        order: { character: { createdAt: 'DESC' } },
+        skip: 0,
+        take: 10,
       });
     });
 
-    it('findPlanets returns the linked planets for an existing movie', async () => {
+    it('findPlanets returns a paginated page of the linked planets', async () => {
       const { service, moviesRepository, moviePlanetRepository } = buildService();
       (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: 'movie-1',
       } as Movie);
       const planet = { id: 'planet-1', name: 'Tatooine' };
-      (moviePlanetRepository.find as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { movieId: 'movie-1', planetId: 'planet-1', planet },
+      (moviePlanetRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [{ movieId: 'movie-1', planetId: 'planet-1', planet }],
+        1,
       ]);
 
-      const result = await service.findPlanets('movie-1');
+      const result = await service.findPlanets('movie-1', baseRelatedQuery());
 
-      expect(result).toEqual([planet]);
+      expect(result.data).toEqual([planet]);
     });
 
-    it('findSpecies returns the linked species for an existing movie', async () => {
+    it('findSpecies returns a paginated page of the linked species', async () => {
       const { service, moviesRepository, movieSpeciesRepository } = buildService();
       (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: 'movie-1',
       } as Movie);
       const species = { id: 'species-1', name: 'Human' };
-      (movieSpeciesRepository.find as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { movieId: 'movie-1', speciesId: 'species-1', species },
+      (movieSpeciesRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [{ movieId: 'movie-1', speciesId: 'species-1', species }],
+        1,
       ]);
 
-      const result = await service.findSpecies('movie-1');
+      const result = await service.findSpecies('movie-1', baseRelatedQuery());
 
-      expect(result).toEqual([species]);
+      expect(result.data).toEqual([species]);
     });
 
-    it('findStarships returns the linked starships for an existing movie', async () => {
+    it('findStarships returns a paginated page of the linked starships', async () => {
       const { service, moviesRepository, movieStarshipRepository } = buildService();
       (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: 'movie-1',
       } as Movie);
       const starship = { id: 'starship-1', name: 'X-wing' };
-      (movieStarshipRepository.find as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { movieId: 'movie-1', starshipId: 'starship-1', starship },
+      (movieStarshipRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [{ movieId: 'movie-1', starshipId: 'starship-1', starship }],
+        1,
       ]);
 
-      const result = await service.findStarships('movie-1');
+      const result = await service.findStarships('movie-1', baseRelatedQuery());
 
-      expect(result).toEqual([starship]);
+      expect(result.data).toEqual([starship]);
     });
 
-    it('findVehicles returns the linked vehicles for an existing movie', async () => {
+    it('findVehicles returns a paginated page of the linked vehicles', async () => {
       const { service, moviesRepository, movieVehicleRepository } = buildService();
       (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: 'movie-1',
       } as Movie);
       const vehicle = { id: 'vehicle-1', name: 'Speeder' };
-      (movieVehicleRepository.find as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { movieId: 'movie-1', vehicleId: 'vehicle-1', vehicle },
+      (movieVehicleRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [{ movieId: 'movie-1', vehicleId: 'vehicle-1', vehicle }],
+        1,
       ]);
 
-      const result = await service.findVehicles('movie-1');
+      const result = await service.findVehicles('movie-1', baseRelatedQuery());
 
-      expect(result).toEqual([vehicle]);
+      expect(result.data).toEqual([vehicle]);
+    });
+
+    it('computes pagination math on a middle page of a nested relation', async () => {
+      const { service, moviesRepository, movieCharacterRepository } = buildService();
+      (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'movie-1',
+      } as Movie);
+      (movieCharacterRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [{ movieId: 'movie-1', characterId: 'char-2', character: { id: 'char-2' } }],
+        25,
+      ]);
+
+      const result = await service.findCharacters(
+        'movie-1',
+        baseRelatedQuery({ page: 2, limit: 10 }),
+      );
+
+      expect(result.meta).toEqual({
+        total: 25,
+        page: 2,
+        totalPages: 3,
+        hasNextPage: true,
+        hasPreviousPage: true,
+      });
+      expect(movieCharacterRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 10, take: 10 }),
+      );
+    });
+
+    it('returns an empty page with zeroed meta when a movie has no linked characters', async () => {
+      const { service, moviesRepository, movieCharacterRepository } = buildService();
+      (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'movie-1',
+      } as Movie);
+      (movieCharacterRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [],
+        0,
+      ]);
+
+      const result = await service.findCharacters('movie-1', baseRelatedQuery());
+
+      expect(result.data).toEqual([]);
+      expect(result.meta).toEqual({
+        total: 0,
+        page: 1,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      });
+    });
+
+    it('maps a whitelisted sortBy on a nested relation to its real column', async () => {
+      const { service, moviesRepository, movieCharacterRepository } = buildService();
+      (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'movie-1',
+      } as Movie);
+      (movieCharacterRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [],
+        0,
+      ]);
+
+      await service.findCharacters(
+        'movie-1',
+        baseRelatedQuery({ sortBy: 'name', order: 'asc' }),
+      );
+
+      expect(movieCharacterRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ order: { character: { name: 'ASC' } } }),
+      );
+    });
+
+    it('falls back to sorting by createdAt instead of crashing on an unwhitelisted sortBy', async () => {
+      const { service, moviesRepository, movieCharacterRepository } = buildService();
+      (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'movie-1',
+      } as Movie);
+      (movieCharacterRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [],
+        0,
+      ]);
+
+      await service.findCharacters(
+        'movie-1',
+        baseRelatedQuery({
+          sortBy: 'name; DROP TABLE characters;--' as ListRelatedQueryDto['sortBy'],
+        }),
+      );
+
+      expect(movieCharacterRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ order: { character: { createdAt: 'DESC' } } }),
+      );
     });
 
     it('throws NotFoundException from every nested relation lookup when the movie does not exist', async () => {
       const { service, moviesRepository } = buildService();
       (moviesRepository.findOneBy as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
-      await expect(service.findCharacters('missing')).rejects.toThrow(NotFoundException);
-      await expect(service.findPlanets('missing')).rejects.toThrow(NotFoundException);
-      await expect(service.findSpecies('missing')).rejects.toThrow(NotFoundException);
-      await expect(service.findStarships('missing')).rejects.toThrow(NotFoundException);
-      await expect(service.findVehicles('missing')).rejects.toThrow(NotFoundException);
+      const query = baseRelatedQuery();
+      await expect(service.findCharacters('missing', query)).rejects.toThrow(NotFoundException);
+      await expect(service.findPlanets('missing', query)).rejects.toThrow(NotFoundException);
+      await expect(service.findSpecies('missing', query)).rejects.toThrow(NotFoundException);
+      await expect(service.findStarships('missing', query)).rejects.toThrow(NotFoundException);
+      await expect(service.findVehicles('missing', query)).rejects.toThrow(NotFoundException);
     });
   });
 });

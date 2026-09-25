@@ -1,5 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import type {
+  FindOptionsOrder,
+  FindOptionsRelations,
+  FindOptionsWhere,
+  ObjectLiteral,
+} from 'typeorm';
 import { Repository } from 'typeorm';
 import type { SwapiFilmDto } from '../swapi/dto/film.dto.js';
 import { Movie } from './entities/movie.entity.js';
@@ -17,6 +23,11 @@ import { Vehicle } from '../vehicles/entities/vehicle.entity.js';
 import type { CreateMovieDto } from './dto/create-movie.dto.js';
 import type { UpdateMovieDto } from './dto/update-movie.dto.js';
 import type { ListMoviesQueryDto, MovieSortField } from './dto/list-movies-query.dto.js';
+import type {
+  ListRelatedQueryDto,
+  RelatedResourceSortField,
+} from './dto/list-related-query.dto.js';
+import type { PaginatedResult } from '../common/pagination/paginated-result.interface.js';
 
 export interface MovieRelationIds {
   characterIds: string[];
@@ -24,19 +35,6 @@ export interface MovieRelationIds {
   starshipIds: string[];
   vehicleIds: string[];
   speciesIds: string[];
-}
-
-export interface PaginationMeta {
-  total: number;
-  page: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
-
-export interface PaginatedResult<T> {
-  data: T[];
-  meta: PaginationMeta;
 }
 
 /**
@@ -54,6 +52,17 @@ const SORT_COLUMNS: Record<MovieSortField, keyof Movie> = {
   createdAt: 'createdAt',
 };
 const DEFAULT_SORT_FIELD: MovieSortField = 'createdAt';
+
+/**
+ * Same whitelist pattern as `SORT_COLUMNS` above, for the 5 nested relation
+ * routes. `name` and `createdAt` exist on every related entity, so one map
+ * covers characters/planets/species/starships/vehicles.
+ */
+const RELATED_SORT_COLUMNS: Record<RelatedResourceSortField, string> = {
+  name: 'name',
+  createdAt: 'createdAt',
+};
+const DEFAULT_RELATED_SORT_FIELD: RelatedResourceSortField = 'createdAt';
 
 @Injectable()
 export class MoviesService {
@@ -204,48 +213,105 @@ export class MoviesService {
     await this.moviesRepository.softDelete(id);
   }
 
-  async findCharacters(movieId: string): Promise<Character[]> {
+  async findCharacters(
+    movieId: string,
+    query: ListRelatedQueryDto,
+  ): Promise<PaginatedResult<Character>> {
     await this.findOneOrFail(movieId);
-    const links = await this.movieCharacterRepository.find({
-      where: { movieId },
-      relations: { character: true },
-    });
-    return links.map((link) => link.character);
+    return this.findRelatedPaginated<MovieCharacter, Character>(
+      this.movieCharacterRepository,
+      movieId,
+      'character',
+      query,
+    );
   }
 
-  async findPlanets(movieId: string): Promise<Planet[]> {
+  async findPlanets(
+    movieId: string,
+    query: ListRelatedQueryDto,
+  ): Promise<PaginatedResult<Planet>> {
     await this.findOneOrFail(movieId);
-    const links = await this.moviePlanetRepository.find({
-      where: { movieId },
-      relations: { planet: true },
-    });
-    return links.map((link) => link.planet);
+    return this.findRelatedPaginated<MoviePlanet, Planet>(
+      this.moviePlanetRepository,
+      movieId,
+      'planet',
+      query,
+    );
   }
 
-  async findSpecies(movieId: string): Promise<Species[]> {
+  async findSpecies(
+    movieId: string,
+    query: ListRelatedQueryDto,
+  ): Promise<PaginatedResult<Species>> {
     await this.findOneOrFail(movieId);
-    const links = await this.movieSpeciesRepository.find({
-      where: { movieId },
-      relations: { species: true },
-    });
-    return links.map((link) => link.species);
+    return this.findRelatedPaginated<MovieSpecies, Species>(
+      this.movieSpeciesRepository,
+      movieId,
+      'species',
+      query,
+    );
   }
 
-  async findStarships(movieId: string): Promise<Starship[]> {
+  async findStarships(
+    movieId: string,
+    query: ListRelatedQueryDto,
+  ): Promise<PaginatedResult<Starship>> {
     await this.findOneOrFail(movieId);
-    const links = await this.movieStarshipRepository.find({
-      where: { movieId },
-      relations: { starship: true },
-    });
-    return links.map((link) => link.starship);
+    return this.findRelatedPaginated<MovieStarship, Starship>(
+      this.movieStarshipRepository,
+      movieId,
+      'starship',
+      query,
+    );
   }
 
-  async findVehicles(movieId: string): Promise<Vehicle[]> {
+  async findVehicles(
+    movieId: string,
+    query: ListRelatedQueryDto,
+  ): Promise<PaginatedResult<Vehicle>> {
     await this.findOneOrFail(movieId);
-    const links = await this.movieVehicleRepository.find({
-      where: { movieId },
-      relations: { vehicle: true },
+    return this.findRelatedPaginated<MovieVehicle, Vehicle>(
+      this.movieVehicleRepository,
+      movieId,
+      'vehicle',
+      query,
+    );
+  }
+
+  /**
+   * Shared pagination for every movie-to-X junction table. Mirrors
+   * `findAllPaginated`'s `findAndCount` pattern so both response shapes stay
+   * identical; only the join-table repository and the relation property name
+   * (e.g. `'character'`) differ per call site.
+   */
+  private async findRelatedPaginated<TLink extends ObjectLiteral, TEntity>(
+    repository: Repository<TLink>,
+    movieId: string,
+    relationProperty: string,
+    query: ListRelatedQueryDto,
+  ): Promise<PaginatedResult<TEntity>> {
+    const { page, limit, sortBy, order } = query;
+    const sortColumn = RELATED_SORT_COLUMNS[sortBy] ?? RELATED_SORT_COLUMNS[DEFAULT_RELATED_SORT_FIELD];
+
+    const [links, total] = await repository.findAndCount({
+      where: { movieId } as unknown as FindOptionsWhere<TLink>,
+      relations: { [relationProperty]: true } as FindOptionsRelations<TLink>,
+      order: { [relationProperty]: { [sortColumn]: order.toUpperCase() } } as FindOptionsOrder<TLink>,
+      skip: (page - 1) * limit,
+      take: limit,
     });
-    return links.map((link) => link.vehicle);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: links.map((link) => (link as Record<string, unknown>)[relationProperty] as TEntity),
+      meta: {
+        total,
+        page,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
 }

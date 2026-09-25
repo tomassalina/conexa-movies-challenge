@@ -141,59 +141,65 @@ describe('MoviesController', () => {
   });
 
   describe('nested relations', () => {
-    it('findCharacters delegates to the service', async () => {
-      const { controller, moviesService } = buildController();
-      const characters = [{ id: 'char-1' }];
-      (moviesService.findCharacters as ReturnType<typeof vi.fn>).mockResolvedValue(characters);
-
-      const result = await controller.findCharacters('movie-1');
-
-      expect(moviesService.findCharacters).toHaveBeenCalledWith('movie-1');
-      expect(result).toBe(characters);
+    const query = { page: 1, limit: 10, sortBy: 'createdAt' as const, order: 'desc' as const };
+    const paginated = (data: unknown[]) => ({
+      data,
+      meta: { total: data.length, page: 1, totalPages: 1, hasNextPage: false, hasPreviousPage: false },
     });
 
-    it('findPlanets delegates to the service', async () => {
+    it('findCharacters delegates to the service with the validated query', async () => {
       const { controller, moviesService } = buildController();
-      const planets = [{ id: 'planet-1' }];
-      (moviesService.findPlanets as ReturnType<typeof vi.fn>).mockResolvedValue(planets);
+      const result = paginated([{ id: 'char-1' }]);
+      (moviesService.findCharacters as ReturnType<typeof vi.fn>).mockResolvedValue(result);
 
-      const result = await controller.findPlanets('movie-1');
+      const response = await controller.findCharacters('movie-1', query);
 
-      expect(moviesService.findPlanets).toHaveBeenCalledWith('movie-1');
-      expect(result).toBe(planets);
+      expect(moviesService.findCharacters).toHaveBeenCalledWith('movie-1', query);
+      expect(response).toBe(result);
     });
 
-    it('findSpecies delegates to the service', async () => {
+    it('findPlanets delegates to the service with the validated query', async () => {
       const { controller, moviesService } = buildController();
-      const species = [{ id: 'species-1' }];
-      (moviesService.findSpecies as ReturnType<typeof vi.fn>).mockResolvedValue(species);
+      const result = paginated([{ id: 'planet-1' }]);
+      (moviesService.findPlanets as ReturnType<typeof vi.fn>).mockResolvedValue(result);
 
-      const result = await controller.findSpecies('movie-1');
+      const response = await controller.findPlanets('movie-1', query);
 
-      expect(moviesService.findSpecies).toHaveBeenCalledWith('movie-1');
-      expect(result).toBe(species);
+      expect(moviesService.findPlanets).toHaveBeenCalledWith('movie-1', query);
+      expect(response).toBe(result);
     });
 
-    it('findStarships delegates to the service', async () => {
+    it('findSpecies delegates to the service with the validated query', async () => {
       const { controller, moviesService } = buildController();
-      const starships = [{ id: 'starship-1' }];
-      (moviesService.findStarships as ReturnType<typeof vi.fn>).mockResolvedValue(starships);
+      const result = paginated([{ id: 'species-1' }]);
+      (moviesService.findSpecies as ReturnType<typeof vi.fn>).mockResolvedValue(result);
 
-      const result = await controller.findStarships('movie-1');
+      const response = await controller.findSpecies('movie-1', query);
 
-      expect(moviesService.findStarships).toHaveBeenCalledWith('movie-1');
-      expect(result).toBe(starships);
+      expect(moviesService.findSpecies).toHaveBeenCalledWith('movie-1', query);
+      expect(response).toBe(result);
     });
 
-    it('findVehicles delegates to the service', async () => {
+    it('findStarships delegates to the service with the validated query', async () => {
       const { controller, moviesService } = buildController();
-      const vehicles = [{ id: 'vehicle-1' }];
-      (moviesService.findVehicles as ReturnType<typeof vi.fn>).mockResolvedValue(vehicles);
+      const result = paginated([{ id: 'starship-1' }]);
+      (moviesService.findStarships as ReturnType<typeof vi.fn>).mockResolvedValue(result);
 
-      const result = await controller.findVehicles('movie-1');
+      const response = await controller.findStarships('movie-1', query);
 
-      expect(moviesService.findVehicles).toHaveBeenCalledWith('movie-1');
-      expect(result).toBe(vehicles);
+      expect(moviesService.findStarships).toHaveBeenCalledWith('movie-1', query);
+      expect(response).toBe(result);
+    });
+
+    it('findVehicles delegates to the service with the validated query', async () => {
+      const { controller, moviesService } = buildController();
+      const result = paginated([{ id: 'vehicle-1' }]);
+      (moviesService.findVehicles as ReturnType<typeof vi.fn>).mockResolvedValue(result);
+
+      const response = await controller.findVehicles('movie-1', query);
+
+      expect(moviesService.findVehicles).toHaveBeenCalledWith('movie-1', query);
+      expect(response).toBe(result);
     });
   });
 });

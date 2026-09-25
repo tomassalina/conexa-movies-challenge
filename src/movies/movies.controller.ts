@@ -23,6 +23,10 @@ import {
   listMoviesQuerySchema,
   type ListMoviesQueryDto,
 } from './dto/list-movies-query.dto.js';
+import {
+  listRelatedQuerySchema,
+  type ListRelatedQueryDto,
+} from './dto/list-related-query.dto.js';
 import { MoviesService } from './movies.service.js';
 
 const movieIdParam = { name: 'id', description: 'Movie id (uuid)' };
@@ -57,7 +61,27 @@ export class MoviesController {
   @Post()
   @Permissions(Permission.MOVIES_WRITE)
   @ApiOperation({ summary: 'Create a manually authored movie (admin-only)' })
-  @ApiBody({ schema: zodToOpenApiSchema(createMovieSchema) })
+  @ApiBody({
+    schema: zodToOpenApiSchema(createMovieSchema),
+    // Swagger UI's auto-generated placeholder (huge numbers for every numeric
+    // field, the literal string "string" for text) is exactly what produced
+    // the episodeId-out-of-range bug; a realistic example keeps "Try it out"
+    // from steering admins into it again.
+    examples: {
+      manuallyAddedMovie: {
+        summary: 'A movie not yet in the SWAPI-synced catalog',
+        value: {
+          title: 'Rogue One: A Star Wars Story',
+          episodeId: null,
+          openingCrawl:
+            "A group of unlikely heroes band together on a mission to steal the plans to the Death Star, the Empire's ultimate weapon of destruction.",
+          director: 'Gareth Edwards',
+          producer: 'Kathleen Kennedy, Allison Shearmur, Simon Emanuel',
+          releaseDate: '2016-12-16',
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: 'Movie created' })
   @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 403, description: 'Caller lacks the movies:write permission' })
@@ -100,56 +124,76 @@ export class MoviesController {
 
   @Get(':id/characters')
   @AnyAuthenticatedUser()
-  @ApiOperation({ summary: 'List the characters that appear in a movie' })
+  @ApiOperation({ summary: 'List the characters that appear in a movie, paginated and sortable' })
   @ApiParam(movieIdParam)
-  @ApiResponse({ status: 200, description: 'List of characters' })
+  @zodQueryParams(listRelatedQuerySchema)
+  @ApiResponse({ status: 200, description: 'Paginated list of characters' })
   @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 404, description: 'Movie not found' })
-  findCharacters(@Param('id') id: string) {
-    return this.moviesService.findCharacters(id);
+  findCharacters(
+    @Param('id') id: string,
+    @Query({ schema: listRelatedQuerySchema }) query: ListRelatedQueryDto,
+  ) {
+    return this.moviesService.findCharacters(id, query);
   }
 
   @Get(':id/planets')
   @AnyAuthenticatedUser()
-  @ApiOperation({ summary: 'List the planets that appear in a movie' })
+  @ApiOperation({ summary: 'List the planets that appear in a movie, paginated and sortable' })
   @ApiParam(movieIdParam)
-  @ApiResponse({ status: 200, description: 'List of planets' })
+  @zodQueryParams(listRelatedQuerySchema)
+  @ApiResponse({ status: 200, description: 'Paginated list of planets' })
   @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 404, description: 'Movie not found' })
-  findPlanets(@Param('id') id: string) {
-    return this.moviesService.findPlanets(id);
+  findPlanets(
+    @Param('id') id: string,
+    @Query({ schema: listRelatedQuerySchema }) query: ListRelatedQueryDto,
+  ) {
+    return this.moviesService.findPlanets(id, query);
   }
 
   @Get(':id/species')
   @AnyAuthenticatedUser()
-  @ApiOperation({ summary: 'List the species that appear in a movie' })
+  @ApiOperation({ summary: 'List the species that appear in a movie, paginated and sortable' })
   @ApiParam(movieIdParam)
-  @ApiResponse({ status: 200, description: 'List of species' })
+  @zodQueryParams(listRelatedQuerySchema)
+  @ApiResponse({ status: 200, description: 'Paginated list of species' })
   @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 404, description: 'Movie not found' })
-  findSpecies(@Param('id') id: string) {
-    return this.moviesService.findSpecies(id);
+  findSpecies(
+    @Param('id') id: string,
+    @Query({ schema: listRelatedQuerySchema }) query: ListRelatedQueryDto,
+  ) {
+    return this.moviesService.findSpecies(id, query);
   }
 
   @Get(':id/starships')
   @AnyAuthenticatedUser()
-  @ApiOperation({ summary: 'List the starships that appear in a movie' })
+  @ApiOperation({ summary: 'List the starships that appear in a movie, paginated and sortable' })
   @ApiParam(movieIdParam)
-  @ApiResponse({ status: 200, description: 'List of starships' })
+  @zodQueryParams(listRelatedQuerySchema)
+  @ApiResponse({ status: 200, description: 'Paginated list of starships' })
   @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 404, description: 'Movie not found' })
-  findStarships(@Param('id') id: string) {
-    return this.moviesService.findStarships(id);
+  findStarships(
+    @Param('id') id: string,
+    @Query({ schema: listRelatedQuerySchema }) query: ListRelatedQueryDto,
+  ) {
+    return this.moviesService.findStarships(id, query);
   }
 
   @Get(':id/vehicles')
   @AnyAuthenticatedUser()
-  @ApiOperation({ summary: 'List the vehicles that appear in a movie' })
+  @ApiOperation({ summary: 'List the vehicles that appear in a movie, paginated and sortable' })
   @ApiParam(movieIdParam)
-  @ApiResponse({ status: 200, description: 'List of vehicles' })
+  @zodQueryParams(listRelatedQuerySchema)
+  @ApiResponse({ status: 200, description: 'Paginated list of vehicles' })
   @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
   @ApiResponse({ status: 404, description: 'Movie not found' })
-  findVehicles(@Param('id') id: string) {
-    return this.moviesService.findVehicles(id);
+  findVehicles(
+    @Param('id') id: string,
+    @Query({ schema: listRelatedQuerySchema }) query: ListRelatedQueryDto,
+  ) {
+    return this.moviesService.findVehicles(id, query);
   }
 }
