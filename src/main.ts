@@ -1,5 +1,10 @@
-import { NestFactory } from '@nestjs/core';
-import { RequestMethod, StandardSchemaValidationPipe, VersioningType } from '@nestjs/common';
+import { NestFactory, Reflector } from '@nestjs/core';
+import {
+  ClassSerializerInterceptor,
+  RequestMethod,
+  StandardSchemaValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
@@ -9,6 +14,7 @@ async function bootstrap() {
   app.use(helmet());
   app.enableCors();
   app.useGlobalPipes(new StandardSchemaValidationPipe());
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // `/`, `/api` and `/health` stay outside the global prefix — they're
   // discovery/liveness endpoints, not versioned resources. `@Version(VERSION_NEUTRAL)`

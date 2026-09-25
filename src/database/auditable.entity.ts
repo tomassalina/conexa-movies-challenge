@@ -1,3 +1,4 @@
+import { Exclude } from 'class-transformer';
 import {
   CreateDateColumn,
   DeleteDateColumn,
@@ -24,6 +25,7 @@ export abstract class AuditableEntity {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 
+  @Exclude()
   @ManyToOne(() => User, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'created_by' })
   createdBy!: User;
@@ -34,6 +36,7 @@ export abstract class AuditableEntity {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt!: Date;
 
+  @Exclude()
   @ManyToOne(() => User, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'updated_by' })
   updatedBy!: User;
@@ -44,6 +47,7 @@ export abstract class AuditableEntity {
   @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt?: Date | null;
 
+  @Exclude()
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'deleted_by' })
   deletedBy?: User | null;
@@ -62,6 +66,7 @@ export abstract class CreatedAuditEntity {
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 
+  @Exclude()
   @ManyToOne(() => User, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'created_by' })
   createdBy!: User;
