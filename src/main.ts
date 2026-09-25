@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { StandardSchemaValidationPipe } from '@nestjs/common';
+import { RequestMethod, StandardSchemaValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
@@ -9,6 +9,18 @@ async function bootstrap() {
   app.use(helmet());
   app.enableCors();
   app.useGlobalPipes(new StandardSchemaValidationPipe());
+
+  // `/`, `/api` and `/health` stay outside the global prefix — they're
+  // discovery/liveness endpoints, not versioned resources. `@Version(VERSION_NEUTRAL)`
+  // on their controllers keeps them out of URI versioning too.
+  app.setGlobalPrefix('api', {
+    exclude: [
+      { path: '/', method: RequestMethod.GET },
+      { path: 'api', method: RequestMethod.GET },
+      { path: 'health', method: RequestMethod.GET },
+    ],
+  });
+  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Conexa Movies Challenge API')
