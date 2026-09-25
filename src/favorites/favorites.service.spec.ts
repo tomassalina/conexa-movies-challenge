@@ -1,8 +1,19 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 import { Movie } from '../movies/entities/movie.entity.js';
+import type { ListFavoritesQueryDto } from './dto/list-favorites-query.dto.js';
 import { Favorite } from './entities/favorite.entity.js';
 import { FavoritesService } from './favorites.service.js';
+
+function baseQuery(overrides: Partial<ListFavoritesQueryDto> = {}): ListFavoritesQueryDto {
+  return {
+    page: 1,
+    limit: 10,
+    sortBy: 'createdAt',
+    order: 'desc',
+    ...overrides,
+  };
+}
 
 describe('FavoritesService', () => {
   const userId = 'user-1';
@@ -15,7 +26,7 @@ describe('FavoritesService', () => {
       create: vi.fn(),
       save: vi.fn(),
       delete: vi.fn(),
-      find: vi.fn(),
+      findAndCount: vi.fn(),
     } as unknown as Repository<Favorite>;
     const moviesRepository = {
       findOneBy: vi.fn(),
@@ -94,28 +105,78 @@ describe('FavoritesService', () => {
   });
 
   describe('findAllForUser', () => {
-    it('returns the favorited movies for the user', async () => {
+    it('returns the favorited movies for the user with pagination meta', async () => {
       const { service, favoritesRepository } = createService();
-      (favoritesRepository.find as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { userId, movieId, movie } as Favorite,
+      (favoritesRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [{ userId, movieId, movie } as Favorite],
+        1,
       ]);
 
-      const result = await service.findAllForUser(userId);
+      const result = await service.findAllForUser(userId, baseQuery());
 
-      expect(favoritesRepository.find).toHaveBeenCalledWith({
+      expect(favoritesRepository.findAndCount).toHaveBeenCalledWith({
         where: { userId },
         relations: { movie: true },
+        order: { createdAt: 'DESC' },
+        skip: 0,
+        take: 10,
       });
-      expect(result).toEqual([movie]);
+      expect(result.data).toEqual([movie]);
+      expect(result.meta).toEqual({
+        total: 1,
+        page: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      });
     });
 
-    it('returns an empty array when the user has no favorites', async () => {
+    it('computes pagination math on the boundary between two pages', async () => {
       const { service, favoritesRepository } = createService();
-      (favoritesRepository.find as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      (favoritesRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [{ userId, movieId, movie } as Favorite],
+        11,
+      ]);
 
-      const result = await service.findAllForUser(userId);
+      const result = await service.findAllForUser(userId, baseQuery({ page: 2, limit: 10 }));
 
-      expect(result).toEqual([]);
+      expect(favoritesRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 10, take: 10 }),
+      );
+      expect(result.meta).toEqual({
+        total: 11,
+        page: 2,
+        totalPages: 2,
+        hasNextPage: false,
+        hasPreviousPage: true,
+      });
+    });
+
+    it('returns an empty page when the user has no favorites', async () => {
+      const { service, favoritesRepository } = createService();
+      (favoritesRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([[], 0]);
+
+      const result = await service.findAllForUser(userId, baseQuery());
+
+      expect(result.data).toEqual([]);
+      expect(result.meta).toEqual({
+        total: 0,
+        page: 1,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      });
+    });
+
+    it('honors the requested order', async () => {
+      const { service, favoritesRepository } = createService();
+      (favoritesRepository.findAndCount as ReturnType<typeof vi.fn>).mockResolvedValue([[], 0]);
+
+      await service.findAllForUser(userId, baseQuery({ order: 'asc' }));
+
+      expect(favoritesRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ order: { createdAt: 'ASC' } }),
+      );
     });
   });
 });

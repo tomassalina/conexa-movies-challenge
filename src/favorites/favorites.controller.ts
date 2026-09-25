@@ -6,14 +6,19 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AnyAuthenticatedUser } from '../auth/decorators/any-authenticated-user.decorator.js';
 import type { RequestWithUser } from '../auth/interfaces/request-with-user.interface.js';
-import { Movie } from '../movies/entities/movie.entity.js';
+import { zodQueryParams } from '../common/openapi/zod-schema.util.js';
 import { Favorite } from './entities/favorite.entity.js';
 import { FavoritesService } from './favorites.service.js';
+import {
+  listFavoritesQuerySchema,
+  type ListFavoritesQueryDto,
+} from './dto/list-favorites-query.dto.js';
 
 const movieIdParam = { name: 'movieId', description: 'Movie id (uuid)' };
 
@@ -62,10 +67,14 @@ export class FavoritesController {
 
   @Get()
   @AnyAuthenticatedUser()
-  @ApiOperation({ summary: "List the caller's favorite movies" })
-  @ApiResponse({ status: 200, description: 'List of favorited movies' })
+  @ApiOperation({ summary: "List the caller's favorite movies, paginated and sortable" })
+  @zodQueryParams(listFavoritesQuerySchema)
+  @ApiResponse({ status: 200, description: 'Paginated list of favorited movies' })
   @ApiResponse({ status: 401, description: 'Missing/invalid bearer token' })
-  findAll(@Req() request: RequestWithUser): Promise<Movie[]> {
-    return this.favoritesService.findAllForUser(request.user.sub);
+  findAll(
+    @Req() request: RequestWithUser,
+    @Query({ schema: listFavoritesQuerySchema }) query: ListFavoritesQueryDto,
+  ) {
+    return this.favoritesService.findAllForUser(request.user.sub, query);
   }
 }

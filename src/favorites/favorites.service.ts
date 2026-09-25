@@ -3,7 +3,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Movie } from '../movies/entities/movie.entity.js';
 import { User } from '../users/entities/user.entity.js';
+import type { PaginatedResult } from '../common/pagination/paginated-result.interface.js';
+import type { FavoriteSortField, ListFavoritesQueryDto } from './dto/list-favorites-query.dto.js';
 import { Favorite } from './entities/favorite.entity.js';
+
+/**
+ * Same whitelist pattern as `MoviesService`'s `SORT_COLUMNS` — only entry
+ * today is `createdAt`, but kept as a map rather than hardcoding the column
+ * so a future sortable field follows the same shape.
+ */
+const FAVORITE_SORT_COLUMNS: Record<FavoriteSortField, keyof Favorite> = {
+  createdAt: 'createdAt',
+};
+const DEFAULT_FAVORITE_SORT_FIELD: FavoriteSortField = 'createdAt';
 
 @Injectable()
 export class FavoritesService {
@@ -41,11 +53,32 @@ export class FavoritesService {
     await this.favoritesRepository.delete({ userId, movieId });
   }
 
-  async findAllForUser(userId: string): Promise<Movie[]> {
-    const favorites = await this.favoritesRepository.find({
+  async findAllForUser(
+    userId: string,
+    query: ListFavoritesQueryDto,
+  ): Promise<PaginatedResult<Movie>> {
+    const { page, limit, sortBy, order } = query;
+    const sortColumn = FAVORITE_SORT_COLUMNS[sortBy] ?? FAVORITE_SORT_COLUMNS[DEFAULT_FAVORITE_SORT_FIELD];
+
+    const [favorites, total] = await this.favoritesRepository.findAndCount({
       where: { userId },
       relations: { movie: true },
+      order: { [sortColumn]: order.toUpperCase() as 'ASC' | 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
-    return favorites.map((favorite) => favorite.movie);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: favorites.map((favorite) => favorite.movie),
+      meta: {
+        total,
+        page,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
 }

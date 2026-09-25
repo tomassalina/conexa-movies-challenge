@@ -86,20 +86,25 @@ describe('FavoritesController', () => {
 
     it('findAll() lists favorites for request.user.sub only, never a query/body-supplied id', async () => {
       const movie = { id: movieId, title: 'A New Hope' } as Movie;
+      const paginated = {
+        data: [movie],
+        meta: { total: 1, page: 1, totalPages: 1, hasNextPage: false, hasPreviousPage: false },
+      };
       const favoritesService = {
-        findAllForUser: vi.fn().mockResolvedValue([movie]),
+        findAllForUser: vi.fn().mockResolvedValue(paginated),
       } as unknown as FavoritesService;
       const controller = new FavoritesController(favoritesService);
       const request = {
         ...createRequest(),
         query: { userId: 'someone-elses-id' },
       } as unknown as RequestWithUser;
+      const query = { page: 1, limit: 10, sortBy: 'createdAt' as const, order: 'desc' as const };
 
-      const result = await controller.findAll(request);
+      const result = await controller.findAll(request, query);
 
-      expect(favoritesService.findAllForUser).toHaveBeenCalledWith(authenticatedUserId);
-      expect(favoritesService.findAllForUser).not.toHaveBeenCalledWith('someone-elses-id');
-      expect(result).toEqual([movie]);
+      expect(favoritesService.findAllForUser).toHaveBeenCalledWith(authenticatedUserId, query);
+      expect(favoritesService.findAllForUser).not.toHaveBeenCalledWith('someone-elses-id', query);
+      expect(result).toEqual(paginated);
     });
   });
 });
