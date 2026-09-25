@@ -7,7 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Role } from '../../users/enums/role.enum.js';
 import { ROLE_PERMISSIONS } from '../constants/role-permissions.js';
-import { PERMISSIONS_KEY } from '../decorators/require-permissions.decorator.js';
+import { PERMISSIONS_KEY } from '../constants/permissions-metadata.key.js';
 import { Permission } from '../enums/permission.enum.js';
 
 /**
