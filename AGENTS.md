@@ -145,6 +145,20 @@ the source of truth for both runtime validation and API docs.
    `node_modules`, and skipping this step produces confusing "works on one
    branch, broken on another" failures that look like real bugs.
 
+4. **Never create, delete, or overwrite `.env` in the primary working
+   directory — not even "if you created it yourself."** This happened
+   twice this session: an agent (or the orchestrator) reasoned "I created
+   this `.env` for my own boot check, so I'll clean it up when done," and
+   ended up deleting or clobbering the developer's real, already-configured
+   `.env` instead — because that self-check ("did I create this?") is
+   unreliable in practice. The fix is not a better check, it's not doing
+   this at all: if you need env vars to boot the app for a verification
+   step, do it inside an isolated git worktree (its `.env` is a genuinely
+   separate file on disk from the main checkout's), or ask the user to
+   confirm `.env` is set up rather than touching it yourself. A stray
+   `.env` left behind is harmless (it's gitignored); overwriting or
+   deleting the real one is not.
+
 ## Where to find deeper context
 
 - `ARCHITECTURE.md` — full design decisions and rationale.
