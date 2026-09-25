@@ -16,6 +16,7 @@ import { CharactersModule } from './characters/characters.module.js';
 import { SpeciesModule } from './species/species.module.js';
 import { StarshipsModule } from './starships/starships.module.js';
 import { VehiclesModule } from './vehicles/vehicles.module.js';
+import { MoviesModule } from './movies/movies.module.js';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { VehiclesModule } from './vehicles/vehicles.module.js';
     SpeciesModule,
     StarshipsModule,
     VehiclesModule,
+    MoviesModule,
   ],
   controllers: [AppController],
   providers: [

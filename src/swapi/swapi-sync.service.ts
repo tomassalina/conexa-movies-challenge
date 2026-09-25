@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CharactersService } from '../characters/characters.service.js';
+import { MoviesService } from '../movies/movies.service.js';
 import { PlanetsService } from '../planets/planets.service.js';
 import { SpeciesService } from '../species/species.service.js';
 import { StarshipsService } from '../starships/starships.service.js';
@@ -17,6 +18,7 @@ export class SwapiSyncService {
     private readonly speciesService: SpeciesService,
     private readonly starshipsService: StarshipsService,
     private readonly vehiclesService: VehiclesService,
+    private readonly moviesService: MoviesService,
   ) {}
 
   async syncPlanets(actorUserId: string): Promise<number> {
@@ -79,5 +81,53 @@ export class SwapiSyncService {
       this.syncStarships(actorUserId),
       this.syncVehicles(actorUserId),
     ]);
+  }
+
+  /** Requires the catalog to already be synced — resolves each film's related SWAPI ids to our local uuids. */
+  async syncMovies(actorUserId: string): Promise<number> {
+    const films = await this.swapiService.fetchFilms();
+    for (const film of films) {
+      const movie = await this.moviesService.upsertFromSwapi(film, actorUserId);
+
+      const [characterIds, planetIds, starshipIds, vehicleIds, speciesIds] =
+        await Promise.all([
+          this.resolveIds(film.characterSwapiIds, (id) =>
+            this.charactersService.findBySwapiId(id),
+          ),
+          this.resolveIds(film.planetSwapiIds, (id) => this.planetsService.findBySwapiId(id)),
+          this.resolveIds(film.starshipSwapiIds, (id) =>
+            this.starshipsService.findBySwapiId(id),
+          ),
+          this.resolveIds(film.vehicleSwapiIds, (id) => this.vehiclesService.findBySwapiId(id)),
+          this.resolveIds(film.speciesSwapiIds, (id) => this.speciesService.findBySwapiId(id)),
+        ]);
+
+      await this.moviesService.linkRelations(
+        movie.id,
+        { characterIds, planetIds, starshipIds, vehicleIds, speciesIds },
+        actorUserId,
+      );
+    }
+    this.logger.log(`Synced ${films.length} movies`);
+    return films.length;
+  }
+
+  async syncAll(actorUserId: string): Promise<void> {
+    await this.syncCatalog(actorUserId);
+    await this.syncMovies(actorUserId);
+  }
+
+  private async resolveIds<T extends { id: string }>(
+    swapiIds: string[],
+    findBySwapiId: (id: string) => Promise<T | null>,
+  ): Promise<string[]> {
+    const found = await Promise.all(swapiIds.map((id) => findBySwapiId(id)));
+    const ids: string[] = [];
+    for (const entity of found) {
+      if (entity !== null) {
+        ids.push(entity.id);
+      }
+    }
+    return ids;
   }
 }
