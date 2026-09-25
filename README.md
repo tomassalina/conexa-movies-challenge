@@ -131,101 +131,11 @@ src/
 
 ## Database Model
 
-```mermaid
-erDiagram
-    USER ||--o{ FAVORITE : favorites
-    MOVIE ||--o{ FAVORITE : "favorited via"
-    MOVIE ||--o{ MOVIE_CHARACTER : includes
-    CHARACTER ||--o{ MOVIE_CHARACTER : "appears in"
-    MOVIE ||--o{ MOVIE_PLANET : includes
-    PLANET ||--o{ MOVIE_PLANET : "appears in"
-    MOVIE ||--o{ MOVIE_SPECIES : includes
-    SPECIES ||--o{ MOVIE_SPECIES : "appears in"
-    MOVIE ||--o{ MOVIE_STARSHIP : includes
-    STARSHIP ||--o{ MOVIE_STARSHIP : "appears in"
-    MOVIE ||--o{ MOVIE_VEHICLE : includes
-    VEHICLE ||--o{ MOVIE_VEHICLE : "appears in"
-    PLANET |o--o{ CHARACTER : homeworld
-    PLANET |o--o{ SPECIES : homeworld
+![Database schema](docs/db-schema.png)
 
-    USER {
-        uuid id PK
-        varchar email UK
-        varchar passwordHash
-        enum role
-    }
-
-    MOVIE {
-        uuid id PK
-        varchar swapiId UK "nullable"
-        varchar title
-        smallint episodeId
-        date releaseDate
-    }
-
-    CHARACTER {
-        uuid id PK
-        varchar swapiId UK
-        varchar name
-        uuid planetId FK "nullable"
-    }
-
-    PLANET {
-        uuid id PK
-        varchar swapiId UK
-        varchar name
-    }
-
-    SPECIES {
-        uuid id PK
-        varchar swapiId UK
-        varchar name
-        uuid planetId FK "nullable"
-    }
-
-    STARSHIP {
-        uuid id PK
-        varchar swapiId UK
-        varchar name
-    }
-
-    VEHICLE {
-        uuid id PK
-        varchar swapiId UK
-        varchar name
-    }
-
-    FAVORITE {
-        uuid userId PK, FK
-        uuid movieId PK, FK
-        timestamptz createdAt
-    }
-
-    MOVIE_CHARACTER {
-        uuid movieId PK, FK
-        uuid characterId PK, FK
-    }
-
-    MOVIE_PLANET {
-        uuid movieId PK, FK
-        uuid planetId PK, FK
-    }
-
-    MOVIE_SPECIES {
-        uuid movieId PK, FK
-        uuid speciesId PK, FK
-    }
-
-    MOVIE_STARSHIP {
-        uuid movieId PK, FK
-        uuid starshipId PK, FK
-    }
-
-    MOVIE_VEHICLE {
-        uuid movieId PK, FK
-        uuid vehicleId PK, FK
-    }
-```
+Source diagram: [`docs/db-schema.drawio`](docs/db-schema.drawio) — open it directly on
+[app.diagrams.net](https://app.diagrams.net/) (File → Open From → Device) or view/edit
+it inline via GitHub's built-in `.drawio` viewer.
 
 `Movie`, `Character`, `Planet`, `Species`, `Starship` and `Vehicle` all also
 carry a full audit trail (`createdBy` / `updatedBy` / `deletedBy` → `User`,
