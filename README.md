@@ -1,114 +1,169 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Conexa Movies Challenge
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A Star Wars movie management backend built with NestJS for the Conexa Backend
+Engineer technical challenge. It exposes JWT-authenticated, role-based CRUD
+for movies, per-user favorites, and an admin-only sync job that ingests the
+public [Star Wars API (SWAPI)](https://swapi.info/) catalog (planets,
+characters, species, starships, vehicles and films) into a Postgres database.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+See [`CHALLENGE.md`](./CHALLENGE.md) for the original assignment brief (in
+Spanish) and [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the reasoning behind
+the non-obvious design decisions.
 
-## Description
+## Tech stack
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **[NestJS](https://nestjs.com/) 12** (`@nestjs/common`, `core`,
+  `platform-express`) — application framework
+- **TypeScript 6**, ESM (`"type": "module"`)
+- **PostgreSQL** + **TypeORM 1.1** (`@nestjs/typeorm`, `pg`) — persistence,
+  with hand-written migrations (no `synchronize`)
+- **[Zod 4](https://zod.dev/)** — request validation via NestJS's native
+  Standard Schema pipe (`StandardSchemaValidationPipe`), no separate
+  `class-validator` layer
+- **JWT auth** — `@nestjs/jwt` + `bcrypt` for password hashing
+- **`@nestjs/swagger`** — OpenAPI docs, fed directly from the same Zod
+  schemas used for validation (see `src/common/openapi/zod-schema.util.ts`)
+- **`@nestjs/schedule`** — daily cron job for the SWAPI sync
+- **`@nestjs/axios`** — HTTP client used to call SWAPI
+- **`helmet`** — baseline HTTP security headers
+- **[Vitest 4](https://vitest.dev/)** (`@vitest/coverage-v8`) — unit and e2e
+  tests
+- **[oxlint](https://oxc.rs/docs/guide/usage/linter.html)** — linting
+- **pnpm** — package manager
 
-## Project setup
+## Setup
 
-```bash
-$ pnpm install
-```
-
-## Compile and run the project
-
-```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
-```
-
-## Run tests
+### 1. Install dependencies
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm install
 ```
 
-## Deployment
+### 2. Configure environment variables
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Copy `.env.example` to `.env` and fill in real values:
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+cp .env.example .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+| Variable | Description |
+| --- | --- |
+| `NODE_ENV` | `development` \| `production` \| `test` (defaults to `development`) |
+| `PORT` | HTTP port the app listens on (defaults to `3000`) |
+| `DATABASE_HOST` | Postgres host (e.g. `localhost`) |
+| `DATABASE_PORT` | Postgres port (defaults to `5432`) |
+| `DATABASE_USER` | Postgres user |
+| `DATABASE_PASSWORD` | Postgres password |
+| `DATABASE_NAME` | Postgres database name |
+| `JWT_SECRET` | Secret used to sign/verify access tokens |
+| `JWT_EXPIRES_IN` | Access token lifetime (e.g. `1d`) |
+| `ADMIN_EMAIL` | Email for the first admin account, used by the seed script and by the sync cron to attribute scheduled writes |
+| `ADMIN_PASSWORD` | Password for the first admin account, used by the seed script (must satisfy the same password policy as signup) |
 
-## Observability
+All variables are validated on boot by `src/config/env.validation.ts`; the
+app refuses to start if any required one is missing or malformed.
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+### 3. Start Postgres
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+A ready-to-use `docker-compose.yml` is included:
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+```bash
+docker compose up -d
+```
 
-## Resources
+### 4. Run migrations
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+pnpm migration:run
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### 5. Seed the first admin account
 
-## Support
+```bash
+pnpm seed
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+This is idempotent — running it again when `ADMIN_EMAIL` already exists is a
+no-op. See [How to get an admin account](#how-to-get-an-admin-account) below
+for why this script is the *only* way to create one.
 
-## Stay in touch
+### 6. Start the app
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+pnpm start:dev
+```
 
-## License
+The app boots on `http://localhost:<PORT>` (default `3000`).
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## Running tests
+
+```bash
+pnpm test          # unit tests (vitest run, *.spec.ts)
+pnpm test:cov       # unit tests with coverage
+pnpm test:e2e       # end-to-end tests (*.e2e-spec.ts, separate vitest config)
+pnpm test:watch     # unit tests in watch mode
+```
+
+Both vitest configs (`vitest.config.ts` and `vitest.config.e2e.ts`) exclude
+`**/.claude/**` from file discovery, so agent worktrees created under
+`.claude/` don't get picked up as test files.
+
+## API documentation
+
+Once the app is running, Swagger UI is available at:
+
+```
+http://localhost:<PORT>/api/docs
+```
+
+The raw OpenAPI document is served as JSON at `/api/docs-json`.
+
+Every route except `POST /auth/signup` and `POST /auth/login` requires a
+bearer token. Obtain one by logging in:
+
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@conexa.ai","password":"<your-password>"}'
+```
+
+Then pass the returned `accessToken` as `Authorization: Bearer <token>` on
+subsequent requests (or via the "Authorize" button in Swagger UI).
+
+## API overview
+
+| Resource | Endpoints | Access |
+| --- | --- | --- |
+| **Auth** (`/auth`) | `POST /signup`, `POST /login` | Public |
+| | `GET /me` | Any authenticated user |
+| **Users** (`/users`) | `PATCH /:id/role` | Admin only (`users:manage_role`) |
+| **Movies** (`/movies`) | `GET /`, `GET /:id`, `GET /:id/characters`, `GET /:id/planets`, `GET /:id/species`, `GET /:id/starships`, `GET /:id/vehicles` | Any authenticated user |
+| | `POST /`, `PATCH /:id`, `DELETE /:id` | Admin only (`movies:write`) |
+| | `POST /movies/sync` | Admin only (`movies:sync`) — triggers a full SWAPI catalog sync |
+| **Favorites** (`/favorites`) | `POST /:movieId`, `DELETE /:movieId`, `GET /` | Any authenticated user, scoped to their own favorites |
+
+Characters, planets, species, starships and vehicles have no standalone
+endpoints of their own — they're populated exclusively by the SWAPI sync and
+exposed only as read-only nested routes under `/movies/:id/...` (see
+[`ARCHITECTURE.md`](./ARCHITECTURE.md) for why).
+
+The SWAPI sync also runs automatically once a day via a cron job
+(`@nestjs/schedule`), attributed to the admin identified by `ADMIN_EMAIL`.
+
+## How to get an admin account
+
+There is no HTTP endpoint that creates an admin:
+
+- `POST /auth/signup` always creates the user with `Role.USER` — any
+  client-supplied `role` field is silently discarded (the signup schema
+  doesn't declare one).
+- `PATCH /users/:id/role` (the only way to promote a user to admin) itself
+  requires the `users:manage_role` permission, which only an existing admin
+  holds.
+
+This is intentionally a chicken-and-egg situation the seed script exists to
+break: `pnpm seed` reads `ADMIN_EMAIL` / `ADMIN_PASSWORD` from the
+environment and creates that one admin account directly, bypassing the
+normal signup flow. Run it once after migrations; every admin after that is
+created by an existing admin via `PATCH /users/:id/role`.
