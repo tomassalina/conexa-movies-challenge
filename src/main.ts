@@ -32,6 +32,15 @@ async function bootstrap() {
     )
     .setVersion('0.0.1')
     .addBearerAuth()
+    // Tag registration order drives the Swagger UI grouping order — there's
+    // no separate "order" option, `@nestjs/swagger` just renders tags in the
+    // sequence they were added here, so this list IS the display order.
+    .addTag('health')
+    .addTag('auth')
+    .addTag('users')
+    .addTag('swapi-sync')
+    .addTag('movies')
+    .addTag('favorites')
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, swaggerDocument);
