@@ -294,17 +294,18 @@ dual origin (SWAPI sync *or* manual admin authorship) — see decision #4 in
 
 ## Deployment
 
-**Live URL:** _TODO — fill in once the Dokploy deploy is live
-(`http://89.116.170.218:3000/` is the Dokploy panel itself, not the app)._
+**Live:** http://app-connect-digital-matrix-5w22bj-14bce3-89-116-170-218.sslip.io/
+— Swagger at [`/api/docs`](http://app-connect-digital-matrix-5w22bj-14bce3-89-116-170-218.sslip.io/api/docs).
 
-Deploying via [Dokploy](https://dokploy.com/) on a self-hosted VPS
-(Hostinger), connected to this GitHub repository for auto-deploy on push to
-`main`. Connecting a repo to Dokploy requires one manual, one-time step in
-its dashboard (Git → Create GitHub App → authorize via OAuth and select this
-repo) — that authorization can't be done through the API alone, only the
+Deployed via [Dokploy](https://dokploy.com/) on a self-hosted VPS
+(Hostinger): the app builds and deploys automatically on every push to
+`main` (Nixpacks, no Dockerfile needed), backed by a separate
+Dokploy-managed Postgres instance. Connecting a repo to Dokploy for the
+first time requires one manual, one-time step in its dashboard (Git →
+Create GitHub App → authorize via OAuth and select the repo) — that
+authorization can't be done through the API alone, only the
 project/application creation, env var configuration, and deploy triggers
-can. Until the live URL above is filled in, run the app locally following
-[Getting Started](#getting-started) above.
+can.
 
 ## Architecture Decisions
 
