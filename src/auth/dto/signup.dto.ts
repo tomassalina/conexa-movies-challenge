@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { passwordSchema } from './password.schema.js';
 
 /**
  * Deliberately has no `role` field: Zod silently drops any key not declared
@@ -7,7 +8,7 @@ import { z } from 'zod';
  */
 export const signupSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: passwordSchema,
 });
 
 export type SignupDto = z.infer<typeof signupSchema>;
