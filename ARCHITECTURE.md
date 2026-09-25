@@ -297,3 +297,43 @@ same app that nothing exercises. Reusing the dev `docker-compose.yml`
 Postgres for production would couple a throwaway local convenience
 service to production uptime and data durability, which a managed
 platform database service is a better fit for.
+
+## 11. Global `/api` prefix, URI versioning, and a SWAPI-style root — added beyond the brief
+
+**Chosen:** every existing route now lives under `/api/v1/...`
+(`app.setGlobalPrefix('api')` + `app.enableVersioning({ type:
+VersioningType.URI, defaultVersion: '1' })` in `src/main.ts`), with three
+deliberate exceptions kept at their bare paths via `@Version(VERSION_NEUTRAL)`
+and `setGlobalPrefix`'s own `exclude` option: `GET /`, `GET /api` and `GET
+/health`. `/` and `/api` return a SWAPI-style (swapi.tech) discovery
+document — a map of this API's own resources to their absolute URLs, built
+from the incoming request so it works unchanged locally and once deployed.
+`GET /api/v1` returns the same discovery document as the version's own
+root. `/health` is a real check via `@nestjs/terminus`'s
+`TypeOrmHealthIndicator`, pinging the actual database connection rather
+than returning a hardcoded string.
+
+**Alternative considered:** leaving routes unprefixed/unversioned (the
+brief never asked for either), or versioning via a header/media-type
+instead of the URI.
+
+**Why not:** neither was requested by the challenge, but both are
+standard, low-cost signals of production-mindedness — the kind of thing
+that comes up in "design for scale" conversations. URI versioning was
+chosen over header-based versioning because it's self-documenting in
+Swagger and in any request log, at the cost of every route gaining a
+`/v1` segment — an acceptable, one-time cost paid now while the API has
+no external consumers yet.
+
+**Gotcha worth recording:** `setGlobalPrefix`'s `exclude` matching runs
+per route against a path that's already had its version segment stripped
+(so exclude patterns are version-agnostic by design). A route with an
+empty controller/method path — like a bare `/api/v1` root — reduces to
+the same comparison key (`/`) as the true unprefixed root once its
+version segment is stripped, so a single `exclude: [{ path: '/', method:
+GET }]` entry would incorrectly swallow both. The fix: give the `/api/v1`
+handler an explicit `v1` method path with `@Version(VERSION_NEUTRAL)`
+(instead of relying on the default-version auto-insertion), so it never
+collides with the bare-root exclude rule while still landing under the
+`api` prefix. `/health` and `/api` follow the same pattern — a distinct,
+explicit path plus their own `exclude` entry — for the same reason.

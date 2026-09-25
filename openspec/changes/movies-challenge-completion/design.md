@@ -179,3 +179,29 @@ Database migrations don't run automatically under Nixpacks, so the
 Dokploy application's startup command was overridden to run
 `migration:run` before starting the server. See `ARCHITECTURE.md`,
 decision 10.
+
+## 12. Global `/api` prefix, URI versioning, `/health`, and a SWAPI-style root
+
+Every route now lives under `/api/v1/...` (`app.setGlobalPrefix('api')` +
+`app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' })`
+in `src/main.ts`), except `GET /`, `GET /api`, `GET /api/v1` and `GET
+/health`, kept at their bare paths via `@Version(VERSION_NEUTRAL)` plus
+`setGlobalPrefix`'s `exclude` option. `/`, `/api` and `/api/v1` all return
+a SWAPI-style (swapi.tech) resource-discovery document built from the
+incoming request's own host, so it resolves correctly both locally and
+once deployed. `/health` uses `@nestjs/terminus`'s `TypeOrmHealthIndicator`
+to actually ping the database rather than return a hardcoded string.
+None of this was asked for by the brief — it demonstrates API versioning
+and a production health-check pattern, matching the "architecture for
+scale" angle of the role this repo is a challenge for.
+
+One real gotcha: `setGlobalPrefix`'s `exclude` matching strips the version
+segment from a route's path before comparing it against the configured
+exclude patterns, so a bare `/api/v1` root (empty controller/method path)
+collapses to the same comparison key (`/`) as the true unprefixed root
+once its version segment is stripped — a single exclude entry for `/`
+would wrongly swallow both. Fixed by giving the `/api/v1` handler an
+explicit `v1` method path with `@Version(VERSION_NEUTRAL)` instead of
+relying on default-version auto-insertion, and giving `/api` and `/health`
+their own explicit path + `exclude` entry for the same reason. See
+`ARCHITECTURE.md`, decision 11.
