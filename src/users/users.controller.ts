@@ -6,7 +6,7 @@ import {
   Req,
   UseInterceptors,
 } from '@nestjs/common';
-import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
+import { Permissions } from '../auth/decorators/permissions.decorator.js';
 import { Permission } from '../auth/enums/permission.enum.js';
 import type { RequestWithUser } from '../auth/interfaces/request-with-user.interface.js';
 import { StripSensitiveFieldsInterceptor } from '../common/interceptors/strip-sensitive-fields.interceptor.js';
@@ -18,7 +18,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Patch(':id/role')
-  @RequirePermissions(Permission.USERS_MANAGE_ROLE)
+  @Permissions(Permission.USERS_MANAGE_ROLE)
   @UseInterceptors(StripSensitiveFieldsInterceptor)
   updateRole(
     @Param('id') id: string,

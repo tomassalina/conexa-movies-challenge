@@ -10,6 +10,7 @@ import {
 import { StripSensitiveFieldsInterceptor } from '../common/interceptors/strip-sensitive-fields.interceptor.js';
 import { UsersService } from '../users/users.service.js';
 import { AuthService } from './auth.service.js';
+import { AnyAuthenticatedUser } from './decorators/any-authenticated-user.decorator.js';
 import { Public } from './decorators/public.decorator.js';
 import { loginSchema, type LoginDto } from './dto/login.dto.js';
 import { signupSchema, type SignupDto } from './dto/signup.dto.js';
@@ -23,6 +24,7 @@ export class AuthController {
   ) {}
 
   @Get('me')
+  @AnyAuthenticatedUser()
   @UseInterceptors(StripSensitiveFieldsInterceptor)
   async me(@Req() request: RequestWithUser) {
     const user = await this.usersService.findById(request.user.sub);

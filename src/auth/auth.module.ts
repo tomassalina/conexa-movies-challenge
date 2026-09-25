@@ -1,12 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from '../users/users.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
-import { AuthGuard } from './guards/jwt-auth.guard.js';
-import { PermissionsGuard } from './guards/permissions.guard.js';
 
 @Module({
   imports: [
@@ -24,12 +21,8 @@ import { PermissionsGuard } from './guards/permissions.guard.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    // Order matters: AuthGuard must run first to populate request.user
-    // before PermissionsGuard reads request.user.role.
-    { provide: APP_GUARD, useClass: AuthGuard },
-    { provide: APP_GUARD, useClass: PermissionsGuard },
-  ],
+  providers: [AuthService],
+  // Exported so AppModule can resolve JwtService for the global AuthGuard.
+  exports: [JwtModule],
 })
 export class AuthModule {}
