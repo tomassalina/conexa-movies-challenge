@@ -318,5 +318,5 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the reasoning behind the
 non-obvious design decisions in this codebase (permission model, migrations
 over `synchronize`, Zod-driven validation and docs, the `swapiId`
 nullability split, favorites, admin bootstrap, the additive SWAPI sync, the
-sort-field whitelist, and the SWAPI Adapter classes / HTTP-only
-`SwapiService` split).
+sort-field whitelist, the SWAPI Adapter classes / HTTP-only `SwapiService`
+split, and the Dokploy/Nixpacks production deployment setup).

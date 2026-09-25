@@ -73,8 +73,23 @@ wiring) before the next phase began.
   design — kept `firstValueFrom` + `HttpService` rather than swapping to a
   plain promise-based HTTP client. See `ARCHITECTURE.md`, decision 9.
 
+- [x] **Fase 10 — Production deployment (Dokploy on Hostinger VPS)**
+  - Deployed via Dokploy's API: new project, Dokploy-managed Postgres
+    instance, GitHub-connected application (Nixpacks build, no Dockerfile),
+    auto-deploy on push to `main` confirmed working end-to-end.
+    Added `engines: {"node": ">=22"}` to `package.json` — Nixpacks defaults
+    to Node 18 otherwise, which fails to build (a dependency needs Node
+    20+ regex syntax). Set a custom startup command on the Dokploy
+    application (`sh -c "tsx .../migration:run ... && node dist/main.js"`)
+    since Nixpacks doesn't run migrations automatically.
+  - Verified live: every endpoint tested against production (positive +
+    negative cases), then the database reverted to its pre-test state via
+    a temporary external-port exposure + `pg_dump`/`pg_restore` from a
+    local Postgres client — see `deploy/production-e2e-verification` in
+    engram for the full pattern.
+  - Live at the URL in `README.md`'s Deployment section.
+
 - [ ] **Remaining / explicitly out of scope for now**
-  - Real deployment (only local Docker Compose for Postgres exists today).
   - Caching of SWAPI responses.
   - Pruning of stale synced relations (see `design.md`, decision 8 —
     accepted limitation, not a bug).

@@ -161,3 +161,21 @@ was kept rather than replaced with a plain promise-based client, since the
 package's own README documents returning Observables as its intended
 design, not a legacy artifact. See `ARCHITECTURE.md`, decision 9, for the
 full reasoning and alternatives considered.
+
+## 11. Production deployment: Dokploy-managed Postgres + Nixpacks, no Dockerfile
+
+Deployed to a self-hosted Dokploy instance (Hostinger VPS) rather than a
+managed PaaS like Railway/Render. The database is a Dokploy-managed
+Postgres service, not the local `docker-compose.yml` Postgres used for
+development — those are two separate instances by design, so local dev
+data never touches production. The application itself builds via Nixpacks
+(auto-detected from `package.json`, no Dockerfile committed) rather than a
+hand-written Dockerfile — a Dockerfile was drafted and locally validated
+first, but dropped once it was clear Nixpacks could build and run this
+project without one, keeping the repo simpler. This required adding
+`engines: {"node": ">=22"}` to `package.json`, since Nixpacks defaults to
+Node 18 otherwise and a dependency needs Node 20+ regex syntax to build.
+Database migrations don't run automatically under Nixpacks, so the
+Dokploy application's startup command was overridden to run
+`migration:run` before starting the server. See `ARCHITECTURE.md`,
+decision 10.

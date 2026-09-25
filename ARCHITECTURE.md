@@ -269,3 +269,31 @@ the package's intended, documented usage, not an artifact of an older
 NestJS convention — so converting the single response with
 `firstValueFrom` and composing `timeout`/`catchError` on the pipe is the
 idiomatic way to consume it, not a legacy pattern to migrate away from.
+
+## 10. Production deployment: Dokploy-managed Postgres + Nixpacks, no Dockerfile
+
+**Chosen:** deployed to [Dokploy](https://dokploy.com/) running on a
+self-hosted Hostinger VPS, using Dokploy's own managed Postgres service
+for production data (a separate instance from the local
+`docker-compose.yml` Postgres used in development) and Nixpacks to build
+the application directly from this GitHub repository — no Dockerfile
+committed. Every push to `main` triggers an automatic build and deploy.
+Because Nixpacks defaults to Node 18 when a project doesn't declare a
+required version, and a dependency here needs Node 20+ regex syntax to
+even build, `package.json` now declares `engines: {"node": ">=22"}`.
+Because Nixpacks-built containers don't run database migrations on their
+own, the Dokploy application's startup command was overridden to run
+`migration:run` before starting the server.
+
+**Alternative considered:** writing and committing a multi-stage
+production `Dockerfile` (one was drafted and validated locally — it built
+and ran correctly against the local Postgres) and/or reusing the local
+`docker-compose.yml` Postgres service for production too.
+
+**Why not:** once Nixpacks was confirmed to build and run this project
+correctly without any custom Dockerfile, keeping one in the repo would
+have been an unused, unmaintained artifact — a second way to build the
+same app that nothing exercises. Reusing the dev `docker-compose.yml`
+Postgres for production would couple a throwaway local convenience
+service to production uptime and data durability, which a managed
+platform database service is a better fit for.
