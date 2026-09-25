@@ -15,14 +15,38 @@ import {
   parseNullableNumericString,
 } from './utils/swapi-parsers.js';
 
-const SWAPI_BASE_URL = 'https://swapi.dev/api';
+const SWAPI_BASE_URL = 'https://www.swapi.tech/api';
 const REQUEST_TIMEOUT_MS = 5000;
+/** Page size for list requests; swapi.tech accepts arbitrarily large `limit` values. */
+const PAGE_LIMIT = 100;
+
+/** A single item inside a swapi.tech list `results` array (with `?expanded=true`). */
+interface SwapiListItem<T> {
+  properties: T;
+  _id: string;
+  description: string;
+  uid: string;
+  __v: number;
+}
 
 interface SwapiListResponse<T> {
-  count: number;
-  next: string | null;
+  message: string;
+  total_records: number;
+  total_pages: number;
   previous: string | null;
-  results: T[];
+  next: string | null;
+  results: SwapiListItem<T>[];
+}
+
+/**
+ * The `films` list endpoint is the one swapi.tech resource that does not
+ * paginate: it always returns every film under a singular `result` array
+ * (not `results`), with no `total_records`/`next`/`previous` fields at all.
+ * Verified live against `GET /films?expanded=true`.
+ */
+interface SwapiFilmsListResponse<T> {
+  message: string;
+  result: SwapiListItem<T>[];
 }
 
 interface RawPlanet {
@@ -35,7 +59,6 @@ interface RawPlanet {
   terrain: string;
   surface_water: string;
   population: string;
-  url: string;
 }
 
 interface RawPerson {
@@ -48,7 +71,6 @@ interface RawPerson {
   birth_year: string;
   gender: string;
   homeworld: string;
-  url: string;
 }
 
 interface RawSpecies {
@@ -62,7 +84,6 @@ interface RawSpecies {
   average_lifespan: string;
   homeworld: string | null;
   language: string;
-  url: string;
 }
 
 interface RawStarship {
@@ -79,7 +100,6 @@ interface RawStarship {
   hyperdrive_rating: string;
   MGLT: string;
   starship_class: string;
-  url: string;
 }
 
 interface RawVehicle {
@@ -94,7 +114,6 @@ interface RawVehicle {
   cargo_capacity: string;
   consumables: string;
   vehicle_class: string;
-  url: string;
 }
 
 interface RawFilm {
@@ -109,7 +128,6 @@ interface RawFilm {
   starships: string[];
   vehicles: string[];
   species: string[];
-  url: string;
 }
 
 @Injectable()
@@ -119,9 +137,9 @@ export class SwapiService {
   constructor(private readonly httpService: HttpService) {}
 
   async fetchPlanets(): Promise<SwapiPlanetDto[]> {
-    const raw = await this.fetchAllPages<RawPlanet>(`${SWAPI_BASE_URL}/planets/`);
-    return raw.map((p) => ({
-      swapiId: extractSwapiId(p.url),
+    const raw = await this.fetchAllPages<RawPlanet>('planets');
+    return raw.map(({ uid, properties: p }) => ({
+      swapiId: uid,
       name: p.name,
       rotationPeriod: parseNullableInt(p.rotation_period),
       orbitalPeriod: parseNullableInt(p.orbital_period),
@@ -135,9 +153,9 @@ export class SwapiService {
   }
 
   async fetchCharacters(): Promise<SwapiCharacterDto[]> {
-    const raw = await this.fetchAllPages<RawPerson>(`${SWAPI_BASE_URL}/people/`);
-    return raw.map((p) => ({
-      swapiId: extractSwapiId(p.url),
+    const raw = await this.fetchAllPages<RawPerson>('people');
+    return raw.map(({ uid, properties: p }) => ({
+      swapiId: uid,
       name: p.name,
       height: parseNullableInt(p.height),
       mass: parseNullableInt(p.mass),
@@ -151,9 +169,9 @@ export class SwapiService {
   }
 
   async fetchSpecies(): Promise<SwapiSpeciesDto[]> {
-    const raw = await this.fetchAllPages<RawSpecies>(`${SWAPI_BASE_URL}/species/`);
-    return raw.map((s) => ({
-      swapiId: extractSwapiId(s.url),
+    const raw = await this.fetchAllPages<RawSpecies>('species');
+    return raw.map(({ uid, properties: s }) => ({
+      swapiId: uid,
       name: s.name,
       classification: cleanString(s.classification),
       designation: cleanString(s.designation),
@@ -168,9 +186,9 @@ export class SwapiService {
   }
 
   async fetchStarships(): Promise<SwapiStarshipDto[]> {
-    const raw = await this.fetchAllPages<RawStarship>(`${SWAPI_BASE_URL}/starships/`);
-    return raw.map((s) => ({
-      swapiId: extractSwapiId(s.url),
+    const raw = await this.fetchAllPages<RawStarship>('starships');
+    return raw.map(({ uid, properties: s }) => ({
+      swapiId: uid,
       name: s.name,
       model: cleanString(s.model),
       manufacturer: cleanString(s.manufacturer),
@@ -188,9 +206,9 @@ export class SwapiService {
   }
 
   async fetchVehicles(): Promise<SwapiVehicleDto[]> {
-    const raw = await this.fetchAllPages<RawVehicle>(`${SWAPI_BASE_URL}/vehicles/`);
-    return raw.map((v) => ({
-      swapiId: extractSwapiId(v.url),
+    const raw = await this.fetchAllPages<RawVehicle>('vehicles');
+    return raw.map(({ uid, properties: v }) => ({
+      swapiId: uid,
       name: v.name,
       model: cleanString(v.model),
       manufacturer: cleanString(v.manufacturer),
@@ -206,9 +224,9 @@ export class SwapiService {
   }
 
   async fetchFilms(): Promise<SwapiFilmDto[]> {
-    const raw = await this.fetchAllPages<RawFilm>(`${SWAPI_BASE_URL}/films/`);
-    return raw.map((f) => ({
-      swapiId: extractSwapiId(f.url),
+    const raw = await this.fetchFilmsList<RawFilm>();
+    return raw.map(({ uid, properties: f }) => ({
+      swapiId: uid,
       title: f.title,
       episodeId: f.episode_id ?? null,
       openingCrawl: cleanString(f.opening_crawl),
@@ -223,15 +241,36 @@ export class SwapiService {
     }));
   }
 
-  private async fetchAllPages<T>(url: string): Promise<T[]> {
-    const results: T[] = [];
-    let nextUrl: string | null = url;
+  /**
+   * Fetches every page of a swapi.tech list resource, requesting `expanded=true`
+   * on the first page (swapi.tech's `next` links already preserve it for later
+   * pages), and returns each item's `uid` alongside its unwrapped `properties`.
+   */
+  private async fetchAllPages<T>(
+    resource: string,
+  ): Promise<Array<{ uid: string; properties: T }>> {
+    const results: Array<{ uid: string; properties: T }> = [];
+    let nextUrl: string | null =
+      `${SWAPI_BASE_URL}/${resource}?page=1&limit=${PAGE_LIMIT}&expanded=true`;
     while (nextUrl) {
       const page: SwapiListResponse<T> = await this.get<SwapiListResponse<T>>(nextUrl);
-      results.push(...page.results);
+      for (const item of page.results) {
+        results.push({ uid: item.uid, properties: item.properties });
+      }
       nextUrl = page.next;
     }
     return results;
+  }
+
+  /**
+   * `films` is unpaginated on swapi.tech (see `SwapiFilmsListResponse`), so it
+   * needs a single request rather than `fetchAllPages`'s `next`-following loop.
+   */
+  private async fetchFilmsList<T>(): Promise<Array<{ uid: string; properties: T }>> {
+    const page = await this.get<SwapiFilmsListResponse<T>>(
+      `${SWAPI_BASE_URL}/films?expanded=true`,
+    );
+    return page.result.map((item) => ({ uid: item.uid, properties: item.properties }));
   }
 
   private async get<T>(url: string): Promise<T> {
