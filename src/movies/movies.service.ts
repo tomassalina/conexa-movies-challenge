@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { SwapiFilmDto } from '../swapi/dto/film.dto.js';
@@ -9,6 +9,14 @@ import { MovieSpecies } from './entities/movie-species.entity.js';
 import { MovieStarship } from './entities/movie-starship.entity.js';
 import { MovieVehicle } from './entities/movie-vehicle.entity.js';
 import { User } from '../users/entities/user.entity.js';
+import { Character } from '../characters/entities/character.entity.js';
+import { Planet } from '../planets/entities/planet.entity.js';
+import { Species } from '../species/entities/species.entity.js';
+import { Starship } from '../starships/entities/starship.entity.js';
+import { Vehicle } from '../vehicles/entities/vehicle.entity.js';
+import type { CreateMovieDto } from './dto/create-movie.dto.js';
+import type { UpdateMovieDto } from './dto/update-movie.dto.js';
+import type { ListMoviesQueryDto, MovieSortField } from './dto/list-movies-query.dto.js';
 
 export interface MovieRelationIds {
   characterIds: string[];
@@ -17,6 +25,35 @@ export interface MovieRelationIds {
   vehicleIds: string[];
   speciesIds: string[];
 }
+
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
+/**
+ * Whitelist mapping every allowed `sortBy` value to its real column name.
+ * This is the only place a `sortBy` string is allowed to influence a TypeORM
+ * `order` clause — never interpolate the raw query value directly, even
+ * though `ListMoviesQueryDto` is already validated by the Zod enum upstream.
+ * Keeping the guard here too means the service stays safe even if it's ever
+ * called from somewhere other than the HTTP layer.
+ */
+const SORT_COLUMNS: Record<MovieSortField, keyof Movie> = {
+  title: 'title',
+  releaseDate: 'releaseDate',
+  episodeId: 'episodeId',
+  createdAt: 'createdAt',
+};
+const DEFAULT_SORT_FIELD: MovieSortField = 'createdAt';
 
 @Injectable()
 export class MoviesService {
@@ -100,5 +137,115 @@ export class MoviesService {
         { conflictPaths: ['movieId', 'vehicleId'] },
       );
     }
+  }
+
+  /**
+   * Creates a manually authored movie. `swapiId` is always `null` here —
+   * only the SWAPI sync path (`upsertFromSwapi`) may set it.
+   */
+  async create(dto: CreateMovieDto, actorUserId: string): Promise<Movie> {
+    const actor = { id: actorUserId } as User;
+    const movie = this.moviesRepository.create({
+      ...dto,
+      swapiId: null,
+      createdBy: actor,
+      updatedBy: actor,
+    });
+    return this.moviesRepository.save(movie);
+  }
+
+  async findAllPaginated(query: ListMoviesQueryDto): Promise<PaginatedResult<Movie>> {
+    const { page, limit, sortBy, order } = query;
+    const sortColumn = SORT_COLUMNS[sortBy] ?? SORT_COLUMNS[DEFAULT_SORT_FIELD];
+
+    const [data, total] = await this.moviesRepository.findAndCount({
+      order: { [sortColumn]: order.toUpperCase() as 'ASC' | 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  }
+
+  async findOneOrFail(id: string): Promise<Movie> {
+    const movie = await this.moviesRepository.findOneBy({ id });
+    if (!movie) {
+      throw new NotFoundException(`Movie ${id} not found`);
+    }
+    return movie;
+  }
+
+  async update(id: string, dto: UpdateMovieDto, actorUserId: string): Promise<Movie> {
+    const movie = await this.findOneOrFail(id);
+    Object.assign(movie, dto);
+    movie.updatedBy = { id: actorUserId } as User;
+    return this.moviesRepository.save(movie);
+  }
+
+  /**
+   * Soft-deletes the movie (sets `deletedAt` via the entity's
+   * `@DeleteDateColumn`). Standard TypeORM finders automatically exclude
+   * soft-deleted rows, so the movie disappears from listing/detail/nested
+   * relation endpoints immediately while its history is preserved.
+   */
+  async remove(id: string): Promise<void> {
+    await this.findOneOrFail(id);
+    await this.moviesRepository.softDelete(id);
+  }
+
+  async findCharacters(movieId: string): Promise<Character[]> {
+    await this.findOneOrFail(movieId);
+    const links = await this.movieCharacterRepository.find({
+      where: { movieId },
+      relations: { character: true },
+    });
+    return links.map((link) => link.character);
+  }
+
+  async findPlanets(movieId: string): Promise<Planet[]> {
+    await this.findOneOrFail(movieId);
+    const links = await this.moviePlanetRepository.find({
+      where: { movieId },
+      relations: { planet: true },
+    });
+    return links.map((link) => link.planet);
+  }
+
+  async findSpecies(movieId: string): Promise<Species[]> {
+    await this.findOneOrFail(movieId);
+    const links = await this.movieSpeciesRepository.find({
+      where: { movieId },
+      relations: { species: true },
+    });
+    return links.map((link) => link.species);
+  }
+
+  async findStarships(movieId: string): Promise<Starship[]> {
+    await this.findOneOrFail(movieId);
+    const links = await this.movieStarshipRepository.find({
+      where: { movieId },
+      relations: { starship: true },
+    });
+    return links.map((link) => link.starship);
+  }
+
+  async findVehicles(movieId: string): Promise<Vehicle[]> {
+    await this.findOneOrFail(movieId);
+    const links = await this.movieVehicleRepository.find({
+      where: { movieId },
+      relations: { vehicle: true },
+    });
+    return links.map((link) => link.vehicle);
   }
 }
